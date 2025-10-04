@@ -138,10 +138,21 @@ class OwnerDashboardActivity : AppCompatActivity() {
                     updateDashboardStats(stats)
                 } else {
                     val error = result.getErrorOrNull()
-                    Toasts.showError(this@OwnerDashboardActivity, error?.message ?: "Failed to load dashboard")
+                    val errorMessage = error?.message ?: "Failed to load dashboard"
+                    
+                    // Check if it's a network error and show appropriate message
+                    if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
+                        Toasts.showWarning(this@OwnerDashboardActivity, "Backend server not available. Using offline mode.")
+                        // Set default values for offline mode
+                        updateDashboardStats(DashboardStats())
+                    } else {
+                        Toasts.showError(this@OwnerDashboardActivity, errorMessage)
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerDashboardActivity, "Failed to load dashboard: ${e.message}")
+                Toasts.showWarning(this@OwnerDashboardActivity, "Backend server not available. Using offline mode.")
+                // Set default values for offline mode
+                updateDashboardStats(DashboardStats())
             } finally {
                 loadingView.hide()
             }

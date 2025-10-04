@@ -177,9 +177,12 @@ class ApiClient(private val prefs: Prefs) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error", e)
+            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+            Log.e(TAG, "Exception message: ${e.message}")
+            Log.e(TAG, "Exception stack trace: ${e.stackTraceToString()}")
             JSONObject().apply {
                 put("success", false)
-                put("message", "An unexpected error occurred.")
+                put("message", "An unexpected error occurred: ${e.javaClass.simpleName} - ${e.message}")
                 put("error", "UNKNOWN_ERROR")
             }
         }

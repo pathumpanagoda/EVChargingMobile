@@ -25,6 +25,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Authentication activity for login
@@ -52,8 +54,13 @@ class AuthActivity : AppCompatActivity() {
         setupUI()
         setupClickListeners()
         
+        // Test backend connectivity
+        testBasicConnectivity()
+        testBackendConnectivity()
+        
         // Check if user is already logged in
         if (prefs.isLoggedIn()) {
+            // Navigate to dashboard without making API calls immediately
             navigateToDashboard()
         }
     }
@@ -99,7 +106,11 @@ class AuthActivity : AppCompatActivity() {
         
         // Register button
         btnRegister.setOnClickListener {
-            startActivity(Intent(this, RegisterActivity::class.java))
+            try {
+                startActivity(Intent(this, RegisterActivity::class.java))
+            } catch (e: Exception) {
+                Toasts.showError(this, "Failed to open registration: ${e.message}")
+            }
         }
         
         // Fake login button (debug only)
@@ -179,5 +190,61 @@ class AuthActivity : AppCompatActivity() {
     private fun fillDemoData() {
         etUsername.setText("123456789V")
         etPassword.setText("password123")
+    }
+    
+    private fun testBackendConnectivity() {
+        lifecycleScope.launch {
+            try {
+                // Show debug info about the BASE_URL being used
+                Toasts.showInfo(this@AuthActivity, "Testing connection to: ${BuildConfig.BASE_URL}")
+                
+                // Test a simple API call to check connectivity
+                // We'll use a simple login attempt with dummy credentials to test connectivity
+                val testRequest = LoginRequest("test", "test")
+                val result = authRepository.login(testRequest)
+                
+                // Even if login fails, if we get a proper response, the backend is reachable
+                if (result.isSuccess() || result.getErrorOrNull()?.message?.contains("Invalid username or password") == true) {
+                    Toasts.showSuccess(this@AuthActivity, "Backend connected successfully")
+                } else {
+                    val errorMsg = result.getErrorOrNull()?.message ?: "Unknown error"
+                    Toasts.showWarning(this@AuthActivity, "Backend connection failed: $errorMsg")
+                }
+            } catch (e: Exception) {
+                Toasts.showError(this@AuthActivity, "Backend connection failed: ${e.message}")
+            }
+        }
+    }
+    
+    private fun testBasicConnectivity() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Test basic HTTP connectivity using OkHttp directly
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                
+                val request = okhttp3.Request.Builder()
+                    .url("${BuildConfig.BASE_URL}/swagger")
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    withContext(Dispatchers.Main) {
+                        Toasts.showSuccess(this@AuthActivity, "Basic HTTP connection successful")
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toasts.showWarning(this@AuthActivity, "Basic HTTP connection failed: ${response.code}")
+                    }
+                }
+                response.close()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toasts.showError(this@AuthActivity, "Basic HTTP test failed: ${e.javaClass.simpleName} - ${e.message}")
+                }
+            }
+        }
     }
 }
