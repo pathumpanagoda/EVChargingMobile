@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EV Charging</string>
+    
+    <!-- Auth -->
+    <string name="login_title">Login</string>
+    <string name="register_title">Register</string>
+    <string name="username_or_nic">Username or NIC</string>
+    <string name="password">Password</string>
+    <string name="login_as_owner">Login as Owner</string>
+    <string name="login_as_operator">Login as Operator</string>
+    <string name="login_button">Login</string>
+    <string name="register_button">Register</string>
+    <string name="no_account">Don\'t have an account?</string>
+    <string name="have_account">Already have an account?</string>
+    <string name="register_here">Register here</string>
+    <string name="login_here">Login here</string>
+    
+    <!-- Registration -->
+    <string name="nic">NIC</string>
+    <string name="name">Name</string>
+    <string name="email">Email</string>
+    <string name="phone">Phone</string>
+    <string name="confirm_password">Confirm Password</string>
+    
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="pending_reservations">Pending Reservations</string>
+    <string name="approved_future">Approved Future</string>
+    <string name="nearby_stations">Nearby Stations</string>
+    <string name="new_reservation">New Reservation</string>
+    <string name="my_bookings">My Bookings</string>
+    <string name="profile">Profile</string>
+    <string name="logout">Logout</string>
+    
+    <!-- Bookings -->
+    <string name="bookings_title">My Bookings</string>
+    <string name="upcoming">Upcoming</string>
+    <string name="history">History</string>
+    <string name="new_booking">New Booking</string>
+    <string name="booking_details">Booking Details</string>
+    <string name="station">Station</string>
+    <string name="start_time">Start Time</string>
+    <string name="end_time">End Time</string>
+    <string name="status">Status</string>
+    <string name="pending">Pending</string>
+    <string name="approved">Approved</string>
+    <string name="completed">Completed</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="modify">Modify</string>
+    <string name="show_qr">Show QR</string>
+    <string name="create_booking">Create Booking</string>
+    <string name="update_booking">Update Booking</string>
+    
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="update_profile">Update Profile</string>
+    <string name="deactivate_account">Deactivate Account</string>
+    <string name="account_deactivated">Account Deactivated</string>
+    
+    <!-- QR Code -->
+    <string name="qr_code_title">QR Code</string>
+    <string name="scan_qr">Scan QR Code</string>
+    <string name="qr_scan_title">QR Scanner</string>
+    <string name="scan_booking_qr">Scan Booking QR Code</string>
+    <string name="operation_completed">Operation Completed</string>
+    
+    <!-- Stations -->
+    <string name="stations_map">Stations Map</string>
+    <string name="nearby_stations_title">Nearby Stations</string>
+    <string name="station_name">Station Name</string>
+    <string name="station_address">Address</string>
+    <string name="station_available">Available</string>
+    <string name="station_occupied">Occupied</string>
+    
+    <!-- Common -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="loading">Loading...</string>
+    <string name="error">Error</string>
+    <string name="success">Success</string>
+    <string name="retry">Retry</string>
+    <string name="back">Back</string>
+    <string name="next">Next</string>
+    <string name="done">Done</string>
+    
+    <!-- Error Messages -->
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_invalid_credentials">Invalid credentials</string>
+    <string name="error_account_deactivated">Your account is deactivated. Contact Backoffice for reactivation.</string>
+    <string name="error_validation">Please check your input</string>
+    <string name="error_booking_not_found">Booking not found</string>
+    <string name="error_station_not_found">Station not found</string>
+    <string name="error_qr_scan_failed">Failed to scan QR code</string>
+    <string name="error_location_permission">Location permission required</string>
+    <string name="error_camera_permission">Camera permission required</string>
+    
+    <!-- Validation Messages -->
+    <string name="validation_nic_required">NIC is required</string>
+    <string name="validation_nic_invalid">Invalid NIC format</string>
+    <string name="validation_name_required">Name is required</string>
+    <string name="validation_email_required">Email is required</string>
+    <string name="validation_email_invalid">Invalid email format</string>
+    <string name="validation_phone_required">Phone is required</string>
+    <string name="validation_password_required">Password is required</string>
+    <string name="validation_password_mismatch">Passwords do not match</string>
+    <string name="validation_password_min_length">Password must be at least 6 characters</string>
+    
+    <!-- Booking Hints -->
+    <string name="booking_hint_create_within_7_days">Create bookings within 7 days from now</string>
+    <string name="booking_hint_update_cancel_12h">Update or cancel at least 12 hours before start time</string>
+    <string name="booking_summary_title">Booking Summary</string>
+    <string name="booking_created_successfully">Booking created successfully</string>
+    <string name="booking_updated_successfully">Booking updated successfully</string>
+    <string name="booking_cancelled_successfully">Booking cancelled successfully</string>
+    
+    <!-- Confirmation Dialogs -->
+    <string name="confirm_deactivate_account">Are you sure you want to deactivate your account?</string>
+    <string name="confirm_cancel_booking">Are you sure you want to cancel this booking?</string>
+    <string name="confirm_logout">Are you sure you want to logout?</string>
+    
+    <!-- Google Maps -->
+    <string name="google_maps_key">AIzaSyBvOkBwv7wJhDmUz8x9Yz2A3B4C5D6E7F8G9H0</string>
+</resources>

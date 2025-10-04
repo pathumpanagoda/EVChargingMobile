@@ -1,0 +1,299 @@
+package com.evcharge.mobile.ui.stations
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.evcharge.mobile.R
+import com.evcharge.mobile.common.Permissions
+import com.evcharge.mobile.common.Toasts
+import com.evcharge.mobile.data.api.ApiClient
+import com.evcharge.mobile.data.api.StationApi
+import com.evcharge.mobile.data.dto.Station
+import com.evcharge.mobile.data.repo.StationRepository
+import com.evcharge.mobile.ui.widgets.LoadingView
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.evcharge.mobile.common.Prefs
+import com.evcharge.mobile.common.getDataOrNull
+import com.evcharge.mobile.common.getErrorOrNull
+import com.evcharge.mobile.common.isSuccess
+import kotlinx.coroutines.launch
+
+/**
+ * Station map activity showing nearby charging stations
+ */
+class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+    
+    private lateinit var map: GoogleMap
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var stationRepository: StationRepository
+    private lateinit var loadingView: LoadingView
+    private lateinit var fabMyLocation: FloatingActionButton
+    
+    private var currentLocation: Location? = null
+    private var stations: List<Station> = emptyList()
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_station_map)
+        
+        initializeComponents()
+        setupUI()
+        setupMap()
+    }
+    
+    private fun initializeComponents() {
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        
+        val prefs = Prefs(this)
+        val apiClient = ApiClient(prefs)
+        val stationApi = StationApi(apiClient)
+        stationRepository = StationRepository(stationApi)
+        
+        loadingView = findViewById(R.id.loading_view)
+        fabMyLocation = findViewById(R.id.fab_my_location)
+    }
+    
+    private fun setupUI() {
+        // Set up toolbar
+        setSupportActionBar(findViewById(R.id.toolbar))
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "Charging Stations"
+    }
+    
+    private fun setupMap() {
+        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+    }
+    
+    override fun onMapReady(googleMap: GoogleMap) {
+        map = googleMap
+        
+        // Configure map
+        map.uiSettings.isZoomControlsEnabled = true
+        map.uiSettings.isMyLocationButtonEnabled = false
+        map.setOnMarkerClickListener(this)
+        
+        // Check location permission and get current location
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            map.isMyLocationEnabled = true
+            getCurrentLocation()
+        } else {
+            requestLocationPermission()
+        }
+        
+        // Load nearby stations
+        loadNearbyStations()
+    }
+    
+    private fun requestLocationPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            Permissions.REQUEST_LOCATION_PERMISSION
+        )
+    }
+    
+    private fun getCurrentLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLocation = location
+                    val currentLatLng = LatLng(location.latitude, location.longitude)
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
+                    loadNearbyStations()
+                }
+            }
+        }
+    }
+    
+    private fun loadNearbyStations() {
+        loadingView.show()
+        loadingView.setMessage("Loading nearby stations...")
+        
+        lifecycleScope.launch {
+            try {
+                val result = if (currentLocation != null) {
+                    stationRepository.getNearbyStations(
+                        currentLocation!!.latitude,
+                        currentLocation!!.longitude,
+                        10.0
+                    )
+                } else {
+                    stationRepository.getAllStations()
+                }
+                
+                if (result.isSuccess()) {
+                    stations = result.getDataOrNull() ?: emptyList()
+                    updateMapWithStations()
+                } else {
+                    val error = result.getErrorOrNull()
+                    Toasts.showError(this@StationMapActivity, error?.message ?: "Failed to load stations")
+                }
+            } catch (e: Exception) {
+                Toasts.showError(this@StationMapActivity, "Failed to load stations: ${e.message}")
+            } finally {
+                loadingView.hide()
+            }
+        }
+    }
+    
+    private fun updateMapWithStations() {
+        map.clear()
+        
+        stations.forEach { station ->
+            val position = LatLng(station.latitude, station.longitude)
+            val marker = map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(station.name)
+                    .snippet(station.address)
+                    .icon(getStationIcon(station))
+            )
+            marker?.tag = station
+        }
+        
+        // If we have stations and no current location, center on first station
+        if (stations.isNotEmpty() && currentLocation == null) {
+            val firstStation = stations.first()
+            val position = LatLng(firstStation.latitude, firstStation.longitude)
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 12f))
+        }
+    }
+    
+    private fun getStationIcon(station: Station): com.google.android.gms.maps.model.BitmapDescriptor {
+        val color = when (station.status) {
+            com.evcharge.mobile.data.dto.StationStatus.AVAILABLE -> BitmapDescriptorFactory.HUE_GREEN
+            com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> BitmapDescriptorFactory.HUE_RED
+            com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> BitmapDescriptorFactory.HUE_ORANGE
+            com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> BitmapDescriptorFactory.HUE_BLUE
+        }
+        return BitmapDescriptorFactory.defaultMarker(color)
+    }
+    
+    override fun onMarkerClick(marker: Marker): Boolean {
+        val station = marker.tag as? Station
+        if (station != null) {
+            showStationInfo(station)
+        }
+        return true
+    }
+    
+    private fun showStationInfo(station: Station) {
+        val statusText = when (station.status) {
+            com.evcharge.mobile.data.dto.StationStatus.AVAILABLE -> "Available"
+            com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> "Occupied"
+            com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Maintenance"
+            com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> "Offline"
+        }
+        
+        val message = """
+            ${station.name}
+            ${station.address}
+            Status: $statusText
+            Charging Rate: ${station.chargingRate} kW
+            Price: $${station.pricePerHour}/hour
+        """.trimIndent()
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Station Details")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+    
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        when (requestCode) {
+            Permissions.REQUEST_LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    map.isMyLocationEnabled = true
+                    getCurrentLocation()
+                } else {
+                    Toasts.showError(this, "Location permission is required to show nearby stations")
+                }
+            }
+        }
+    }
+    
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_station_map, menu)
+        return true
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                finish()
+                true
+            }
+            R.id.action_refresh -> {
+                loadNearbyStations()
+                true
+            }
+            R.id.action_filter -> {
+                showFilterDialog()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+    
+    private fun showFilterDialog() {
+        val statuses = arrayOf("All", "Available", "Occupied", "Maintenance", "Offline")
+        var selectedIndex = 0
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Filter Stations")
+            .setSingleChoiceItems(statuses, 0) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Apply") { _, _ ->
+                filterStations(selectedIndex)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun filterStations(selectedIndex: Int) {
+        val filteredStations = when (selectedIndex) {
+            0 -> stations // All
+            1 -> stations.filter { it.status == com.evcharge.mobile.data.dto.StationStatus.AVAILABLE }
+            2 -> stations.filter { it.status == com.evcharge.mobile.data.dto.StationStatus.OCCUPIED }
+            3 -> stations.filter { it.status == com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE }
+            4 -> stations.filter { it.status == com.evcharge.mobile.data.dto.StationStatus.OFFLINE }
+            else -> stations
+        }
+        
+        // Update map with filtered stations
+        map.clear()
+        filteredStations.forEach { station ->
+            val position = LatLng(station.latitude, station.longitude)
+            val marker = map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(station.name)
+                    .snippet(station.address)
+                    .icon(getStationIcon(station))
+            )
+            marker?.tag = station
+        }
+    }
+}
