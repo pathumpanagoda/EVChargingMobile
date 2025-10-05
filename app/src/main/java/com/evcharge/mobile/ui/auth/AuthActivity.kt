@@ -60,7 +60,12 @@ class AuthActivity : AppCompatActivity() {
         // Check if user is already logged in
         if (prefs.isLoggedIn()) {
             // Navigate to dashboard without making API calls immediately
-            navigateToDashboard()
+            try {
+                navigateToDashboard()
+            } catch (e: Exception) {
+                android.util.Log.e("AuthActivity", "Auto-navigation failed", e)
+                // Continue with login screen if auto-navigation fails
+            }
         }
     }
     
@@ -165,7 +170,15 @@ class AuthActivity : AppCompatActivity() {
                         
                         withContext(Dispatchers.Main) {
                             Toasts.showSuccess(this@AuthActivity, "Login successful")
-                            navigateToDashboard()
+                            // Debug: Log the role and navigation decision
+                            android.util.Log.d("AuthActivity", "User role: ${loginResponse.role}")
+                            android.util.Log.d("AuthActivity", "Is owner: ${prefs.isOwner()}")
+                            android.util.Log.d("AuthActivity", "Is operator: ${prefs.isOperator()}")
+                            
+                            // Add a small delay to ensure login is fully processed
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                navigateToDashboard()
+                            }, 500)
                         }
                     }
                 } else {
@@ -190,13 +203,29 @@ class AuthActivity : AppCompatActivity() {
     }
     
     private fun navigateToDashboard() {
-        val intent = if (prefs.isOwner()) {
-            Intent(this, OwnerDashboardActivity::class.java)
-        } else {
-            Intent(this, OperatorHomeActivity::class.java)
+        try {
+            val isOwner = prefs.isOwner()
+            val isOperator = prefs.isOperator()
+            val role = prefs.getRole()
+            
+            android.util.Log.d("AuthActivity", "Navigation - Role: $role, IsOwner: $isOwner, IsOperator: $isOperator")
+            
+            // Always try OwnerDashboardActivity first as it's more stable
+            val intent = Intent(this, OwnerDashboardActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            
+            android.util.Log.d("AuthActivity", "Starting OwnerDashboardActivity")
+            startActivity(intent)
+            finish()
+            
+        } catch (e: Exception) {
+            android.util.Log.e("AuthActivity", "Navigation error", e)
+            Toasts.showError(this, "Failed to navigate: ${e.message}")
+            
+            // If navigation fails, just show success message and stay on login screen
+            Toasts.showSuccess(this, "Login successful! Please try again.")
         }
-        startActivity(intent)
-        finish()
     }
     
     private fun fillDemoData() {

@@ -57,6 +57,23 @@ class OwnerDashboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_owner_dashboard)
         
+        // Initialize prefs first
+        prefs = Prefs(this)
+        
+        // Check if user is properly authenticated
+        android.util.Log.d("OwnerDashboard", "Checking authentication - isLoggedIn: ${prefs.isLoggedIn()}, hasValidSession: ${prefs.hasValidSession()}")
+        
+        if (!prefs.isLoggedIn()) {
+            android.util.Log.w("OwnerDashboard", "User not logged in, redirecting to auth")
+            Toasts.showError(this, "Please login first.")
+            val intent = Intent(this, com.evcharge.mobile.ui.auth.AuthActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            finish()
+            return
+        }
+        
         initializeComponents()
         setupUI()
         setupClickListeners()
@@ -64,40 +81,53 @@ class OwnerDashboardActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val bookingApi = BookingApi(apiClient)
-        val ownerApi = OwnerApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
-        bookingRepository = BookingRepository(bookingApi)
-        ownerRepository = OwnerRepository(ownerApi, ownerDao)
-        
-        // Initialize UI components
-        tvWelcome = findViewById(R.id.tv_welcome)
-        tvOwnerName = findViewById(R.id.tv_owner_name)
-        tvPendingCount = findViewById(R.id.tv_pending_count)
-        tvApprovedCount = findViewById(R.id.tv_approved_count)
-        btnNewReservation = findViewById(R.id.btn_new_reservation)
-        btnMyBookings = findViewById(R.id.btn_my_bookings)
-        btnProfile = findViewById(R.id.btn_profile)
-        btnViewMap = findViewById(R.id.btn_view_map)
-        loadingView = findViewById(R.id.loading_view)
+        try {
+            val apiClient = ApiClient(prefs)
+            val authApi = AuthApi(apiClient)
+            val bookingApi = BookingApi(apiClient)
+            val ownerApi = OwnerApi(apiClient)
+            val ownerDao = OwnerDao(App.instance.dbHelper)
+            
+            authRepository = AuthRepository(authApi, ownerDao, prefs)
+            bookingRepository = BookingRepository(bookingApi)
+            ownerRepository = OwnerRepository(ownerApi, ownerDao)
+            
+            // Initialize UI components
+            tvWelcome = findViewById(R.id.tv_welcome)
+            tvOwnerName = findViewById(R.id.tv_owner_name)
+            tvPendingCount = findViewById(R.id.tv_pending_count)
+            tvApprovedCount = findViewById(R.id.tv_approved_count)
+            btnNewReservation = findViewById(R.id.btn_new_reservation)
+            btnMyBookings = findViewById(R.id.btn_my_bookings)
+            btnProfile = findViewById(R.id.btn_profile)
+            btnViewMap = findViewById(R.id.btn_view_map)
+            loadingView = findViewById(R.id.loading_view)
+            
+            android.util.Log.d("OwnerDashboard", "Components initialized successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("OwnerDashboard", "Failed to initialize components", e)
+            Toasts.showError(this, "Failed to initialize dashboard: ${e.message}")
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        
-        // Load owner name
-        val ownerNic = prefs.getNIC()
-        val localOwner = ownerRepository.getLocalOwner(ownerNic)
-        if (localOwner != null && localOwner.name.isNotEmpty()) {
-            tvOwnerName.text = localOwner.name
-        } else {
-            tvOwnerName.text = "EV Owner"
+        try {
+            // Set up toolbar
+            setSupportActionBar(findViewById(R.id.toolbar))
+            
+            // Load owner name
+            val ownerNic = prefs.getNIC()
+            val localOwner = ownerRepository.getLocalOwner(ownerNic)
+            if (localOwner != null && localOwner.name.isNotEmpty()) {
+                tvOwnerName.text = localOwner.name
+            } else {
+                tvOwnerName.text = "EV Owner"
+            }
+            
+            android.util.Log.d("OwnerDashboard", "UI setup completed successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("OwnerDashboard", "Failed to setup UI", e)
+            Toasts.showError(this, "Failed to setup UI: ${e.message}")
         }
     }
     
