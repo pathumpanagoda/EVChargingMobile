@@ -80,7 +80,7 @@ class Prefs(context: Context) {
     /**
      * Check if user is owner
      */
-    fun isOwner(): Boolean = getRole() == "Owner"
+    fun isOwner(): Boolean = getRole() == "EVOwner"
     
     /**
      * Check if user is operator

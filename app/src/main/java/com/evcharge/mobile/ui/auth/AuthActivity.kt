@@ -55,8 +55,7 @@ class AuthActivity : AppCompatActivity() {
         setupClickListeners()
         
         // Test backend connectivity
-        testBasicConnectivity()
-        testBackendConnectivity()
+        testSimpleConnectivity()
         
         // Check if user is already logged in
         if (prefs.isLoggedIn()) {
@@ -140,39 +139,52 @@ class AuthActivity : AppCompatActivity() {
         
         val request = LoginRequest(username, password)
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
+                withContext(Dispatchers.Main) {
+                    Toasts.showInfo(this@AuthActivity, "Attempting login with: $username")
+                }
                 val result = authRepository.login(request)
                 
                 if (result.isSuccess()) {
                     val loginResponse = result.getDataOrNull()
                     if (loginResponse != null) {
                         // Check if account is deactivated (for owners)
-                        if (isOwner && loginResponse.role == "Owner") {
+                        if (isOwner && loginResponse.role == "EVOwner") {
                             val statusResult = authRepository.checkAccountStatus(loginResponse.nic ?: "")
                             if (statusResult.isSuccess()) {
                                 val isActive = statusResult.getDataOrNull() ?: true
                                 if (!isActive) {
-                                    Toasts.showError(this@AuthActivity, "Your account is deactivated. Contact Backoffice for reactivation.")
+                                    withContext(Dispatchers.Main) {
+                                        Toasts.showError(this@AuthActivity, "Your account is deactivated. Contact Backoffice for reactivation.")
+                                    }
                                     return@launch
                                 }
                             }
                         }
                         
-                        Toasts.showSuccess(this@AuthActivity, "Login successful")
-                        navigateToDashboard()
+                        withContext(Dispatchers.Main) {
+                            Toasts.showSuccess(this@AuthActivity, "Login successful")
+                            navigateToDashboard()
+                        }
                     }
                 } else {
                     val error = result.getErrorOrNull()
                     val message = error?.message ?: "Login failed"
-                    Toasts.showError(this@AuthActivity, message)
+                    withContext(Dispatchers.Main) {
+                        Toasts.showError(this@AuthActivity, "Login failed: $message")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@AuthActivity, "Login failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toasts.showError(this@AuthActivity, "Login exception: ${e.javaClass.simpleName} - ${e.message}")
+                }
             } finally {
-                // Reset button
-                btnLogin.isEnabled = true
-                btnLogin.text = getString(R.string.login_button)
+                withContext(Dispatchers.Main) {
+                    // Reset button
+                    btnLogin.isEnabled = true
+                    btnLogin.text = getString(R.string.login_button)
+                }
             }
         }
     }
@@ -189,40 +201,21 @@ class AuthActivity : AppCompatActivity() {
     
     private fun fillDemoData() {
         etUsername.setText("123456789V")
-        etPassword.setText("password123")
+        etPassword.setText("Password123")
     }
     
-    private fun testBackendConnectivity() {
-        lifecycleScope.launch {
-            try {
-                // Show debug info about the BASE_URL being used
-                Toasts.showInfo(this@AuthActivity, "Testing connection to: ${BuildConfig.BASE_URL}")
-                
-                // Test a simple API call to check connectivity
-                // We'll use a simple login attempt with dummy credentials to test connectivity
-                val testRequest = LoginRequest("test", "test")
-                val result = authRepository.login(testRequest)
-                
-                // Even if login fails, if we get a proper response, the backend is reachable
-                if (result.isSuccess() || result.getErrorOrNull()?.message?.contains("Invalid username or password") == true) {
-                    Toasts.showSuccess(this@AuthActivity, "Backend connected successfully")
-                } else {
-                    val errorMsg = result.getErrorOrNull()?.message ?: "Unknown error"
-                    Toasts.showWarning(this@AuthActivity, "Backend connection failed: $errorMsg")
-                }
-            } catch (e: Exception) {
-                Toasts.showError(this@AuthActivity, "Backend connection failed: ${e.message}")
-            }
-        }
-    }
-    
-    private fun testBasicConnectivity() {
+    private fun testSimpleConnectivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // Show debug info about the BASE_URL being used
+                withContext(Dispatchers.Main) {
+                    Toasts.showInfo(this@AuthActivity, "Testing: ${BuildConfig.BASE_URL}")
+                }
+                
                 // Test basic HTTP connectivity using OkHttp directly
                 val client = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                     .build()
                 
                 val request = okhttp3.Request.Builder()
@@ -232,17 +225,17 @@ class AuthActivity : AppCompatActivity() {
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
                     withContext(Dispatchers.Main) {
-                        Toasts.showSuccess(this@AuthActivity, "Basic HTTP connection successful")
+                        Toasts.showSuccess(this@AuthActivity, "✓ Backend connected successfully")
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toasts.showWarning(this@AuthActivity, "Basic HTTP connection failed: ${response.code}")
+                        Toasts.showWarning(this@AuthActivity, "⚠ Backend responded with code: ${response.code}")
                     }
                 }
                 response.close()
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toasts.showError(this@AuthActivity, "Basic HTTP test failed: ${e.javaClass.simpleName} - ${e.message}")
+                    Toasts.showError(this@AuthActivity, "✗ Connection failed: ${e.javaClass.simpleName}")
                 }
             }
         }

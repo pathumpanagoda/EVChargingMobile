@@ -18,8 +18,8 @@ class AuthApi(private val apiClient: ApiClient) {
     suspend fun login(request: LoginRequest): Result<LoginResponse> {
         return try {
             val body = JSONObject().apply {
-                put("usernameOrNic", request.usernameOrNic)
-                put("password", request.password)
+                put("Username", request.usernameOrNic)
+                put("Password", request.password)
             }
             
             val response = apiClient.post("/api/auth/login", body)
