@@ -57,27 +57,33 @@ class OwnerDashboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_owner_dashboard)
         
-        // Initialize prefs first
-        prefs = Prefs(this)
-        
-        // Check if user is properly authenticated
-        android.util.Log.d("OwnerDashboard", "Checking authentication - isLoggedIn: ${prefs.isLoggedIn()}, hasValidSession: ${prefs.hasValidSession()}")
-        
-        if (!prefs.isLoggedIn()) {
-            android.util.Log.w("OwnerDashboard", "User not logged in, redirecting to auth")
-            Toasts.showError(this, "Please login first.")
-            val intent = Intent(this, com.evcharge.mobile.ui.auth.AuthActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-            finish()
-            return
+        try {
+            // Initialize prefs first
+            prefs = Prefs(this)
+            
+            // Check if user is properly authenticated
+            android.util.Log.d("OwnerDashboard", "Checking authentication - isLoggedIn: ${prefs.isLoggedIn()}, hasValidSession: ${prefs.hasValidSession()}")
+            
+            if (!prefs.isLoggedIn()) {
+                android.util.Log.w("OwnerDashboard", "User not logged in, redirecting to auth")
+                Toasts.showError(this, "Please login first.")
+                val intent = Intent(this, com.evcharge.mobile.ui.auth.AuthActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                finish()
+                return
+            }
+            
+            initializeComponents()
+            setupUI()
+            setupClickListeners()
+            loadDashboardData()
+        } catch (e: Exception) {
+            android.util.Log.e("OwnerDashboard", "Error in onCreate", e)
+            // Don't show error to user, just log it
+            android.util.Log.e("OwnerDashboard", "onCreate error: ${e.message}")
         }
-        
-        initializeComponents()
-        setupUI()
-        setupClickListeners()
-        loadDashboardData()
     }
     
     private fun initializeComponents() {
@@ -106,14 +112,21 @@ class OwnerDashboardActivity : AppCompatActivity() {
             android.util.Log.d("OwnerDashboard", "Components initialized successfully")
         } catch (e: Exception) {
             android.util.Log.e("OwnerDashboard", "Failed to initialize components", e)
-            Toasts.showError(this, "Failed to initialize dashboard: ${e.message}")
+            // Don't show error message to user, just log it
+            android.util.Log.e("OwnerDashboard", "Component initialization error: ${e.message}")
         }
     }
     
     private fun setupUI() {
         try {
-            // Set up toolbar
-            setSupportActionBar(findViewById(R.id.toolbar))
+            // Set up toolbar only if it doesn't already exist
+            val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+            if (toolbar != null && supportActionBar == null) {
+                setSupportActionBar(toolbar)
+                android.util.Log.d("OwnerDashboard", "Toolbar set successfully")
+            } else {
+                android.util.Log.d("OwnerDashboard", "Toolbar already exists or not found")
+            }
             
             // Load owner name
             val ownerNic = prefs.getNIC()
@@ -127,29 +140,80 @@ class OwnerDashboardActivity : AppCompatActivity() {
             android.util.Log.d("OwnerDashboard", "UI setup completed successfully")
         } catch (e: Exception) {
             android.util.Log.e("OwnerDashboard", "Failed to setup UI", e)
-            Toasts.showError(this, "Failed to setup UI: ${e.message}")
+            // Don't show error message to user, just log it
+            android.util.Log.e("OwnerDashboard", "UI setup error: ${e.message}")
         }
     }
     
     private fun setupClickListeners() {
-        // New reservation button
-        btnNewReservation.setOnClickListener {
-            startActivity(Intent(this, BookingFormActivity::class.java))
-        }
-        
-        // My bookings button
-        btnMyBookings.setOnClickListener {
-            startActivity(Intent(this, BookingListActivity::class.java))
-        }
-        
-        // Profile button
-        btnProfile.setOnClickListener {
-            startActivity(Intent(this, OwnerProfileActivity::class.java))
-        }
-        
-        // View map button
-        btnViewMap.setOnClickListener {
-            startActivity(Intent(this, StationMapActivity::class.java))
+        try {
+            // New reservation button
+            btnNewReservation.setOnClickListener {
+                try {
+                    android.util.Log.d("OwnerDashboard", "New reservation button clicked")
+                    Toasts.showInfo(this, "Opening booking form...")
+                    
+                    // Test if we can create the intent first
+                    val intent = Intent(this, BookingFormActivity::class.java)
+                    android.util.Log.d("OwnerDashboard", "Intent created successfully")
+                    
+                    // Try to start the activity
+                    startActivity(intent)
+                    android.util.Log.d("OwnerDashboard", "BookingFormActivity started successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("OwnerDashboard", "Failed to start BookingFormActivity", e)
+                    android.util.Log.e("OwnerDashboard", "Exception details: ${e.javaClass.simpleName} - ${e.message}")
+                    android.util.Log.e("OwnerDashboard", "Stack trace: ${e.stackTraceToString()}")
+                    Toasts.showError(this, "Failed to open booking form: ${e.message}")
+                }
+            }
+            
+            // My bookings button
+            btnMyBookings.setOnClickListener {
+                try {
+                    android.util.Log.d("OwnerDashboard", "My bookings button clicked")
+                    Toasts.showInfo(this, "Opening bookings list...")
+                    val intent = Intent(this, BookingListActivity::class.java)
+                    startActivity(intent)
+                    android.util.Log.d("OwnerDashboard", "BookingListActivity started successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("OwnerDashboard", "Failed to start BookingListActivity", e)
+                    Toasts.showError(this, "Failed to open bookings: ${e.message}")
+                }
+            }
+            
+            // Profile button
+            btnProfile.setOnClickListener {
+                try {
+                    android.util.Log.d("OwnerDashboard", "Profile button clicked")
+                    Toasts.showInfo(this, "Opening profile...")
+                    val intent = Intent(this, OwnerProfileActivity::class.java)
+                    startActivity(intent)
+                    android.util.Log.d("OwnerDashboard", "OwnerProfileActivity started successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("OwnerDashboard", "Failed to start OwnerProfileActivity", e)
+                    Toasts.showError(this, "Failed to open profile: ${e.message}")
+                }
+            }
+            
+            // View map button
+            btnViewMap.setOnClickListener {
+                try {
+                    android.util.Log.d("OwnerDashboard", "View map button clicked")
+                    Toasts.showInfo(this, "Opening station map...")
+                    val intent = Intent(this, StationMapActivity::class.java)
+                    startActivity(intent)
+                    android.util.Log.d("OwnerDashboard", "StationMapActivity started successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("OwnerDashboard", "Failed to start StationMapActivity", e)
+                    Toasts.showError(this, "Failed to open map: ${e.message}")
+                }
+            }
+            
+            android.util.Log.d("OwnerDashboard", "Click listeners setup completed successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("OwnerDashboard", "Failed to setup click listeners", e)
+            Toasts.showError(this, "Failed to setup buttons: ${e.message}")
         }
     }
     
@@ -161,32 +225,36 @@ class OwnerDashboardActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
+                // Try to get data from backend first
                 val result = bookingRepository.getDashboardStats(ownerNic)
                 
                 if (result.isSuccess()) {
                     val stats = result.getDataOrNull() ?: DashboardStats()
                     updateDashboardStats(stats)
+                    Toasts.showSuccess(this@OwnerDashboardActivity, "Connected to backend successfully!")
                 } else {
-                    val error = result.getErrorOrNull()
-                    val errorMessage = error?.message ?: "Failed to load dashboard"
-                    
-                    // Check if it's a network error and show appropriate message
-                    if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
-                        Toasts.showWarning(this@OwnerDashboardActivity, "Backend server not available. Using offline mode.")
-                        // Set default values for offline mode
-                        updateDashboardStats(DashboardStats())
-                    } else {
-                        Toasts.showError(this@OwnerDashboardActivity, errorMessage)
-                    }
+                    // If backend fails, use mock data instead of showing error
+                    loadMockDashboardData()
                 }
             } catch (e: Exception) {
-                Toasts.showWarning(this@OwnerDashboardActivity, "Backend server not available. Using offline mode.")
-                // Set default values for offline mode
-                updateDashboardStats(DashboardStats())
+                // If any exception occurs, use mock data
+                loadMockDashboardData()
             } finally {
                 loadingView.hide()
             }
         }
+    }
+    
+    private fun loadMockDashboardData() {
+        // Create mock data for offline mode
+        val mockStats = DashboardStats(
+            pendingCount = 2,
+            approvedCount = 5
+        )
+        updateDashboardStats(mockStats)
+        
+        // Show info message about backend connectivity
+        Toasts.showInfo(this, "Backend server not available. Using demo data.")
     }
     
     private fun updateDashboardStats(stats: DashboardStats) {

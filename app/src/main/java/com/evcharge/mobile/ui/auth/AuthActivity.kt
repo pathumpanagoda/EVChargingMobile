@@ -247,25 +247,79 @@ class AuthActivity : AppCompatActivity() {
                     .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                     .build()
                 
+                // Try multiple endpoints
+                val endpoints = listOf(
+                    "${BuildConfig.BASE_URL}/swagger",
+                    "${BuildConfig.BASE_URL}/health",
+                    "${BuildConfig.BASE_URL}/",
+                    "http://10.0.2.2:5034/swagger",
+                    "http://10.0.2.2:5034/health",
+                    "http://10.0.2.2:5034/"
+                )
+                
+                var connected = false
+                var lastError: Exception? = null
+                
+                for (endpoint in endpoints) {
+                    try {
+                        android.util.Log.d("AuthActivity", "Trying endpoint: $endpoint")
+                        val request = okhttp3.Request.Builder()
+                            .url(endpoint)
+                            .build()
+                        
+                        val response = client.newCall(request).execute()
+                        android.util.Log.d("AuthActivity", "Response from $endpoint: ${response.code}")
+                        
+                        if (response.isSuccessful) {
+                            connected = true
+                            withContext(Dispatchers.Main) {
+                                Toasts.showSuccess(this@AuthActivity, "✓ Backend connected to: $endpoint")
+                            }
+                            response.close()
+                            break
+                        } else {
+                            android.util.Log.w("AuthActivity", "Endpoint $endpoint returned code: ${response.code}")
+                            response.close()
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("AuthActivity", "Endpoint $endpoint failed: ${e.message}")
+                        lastError = e
+                    }
+                }
+                
+                if (!connected) {
+                    withContext(Dispatchers.Main) {
+                        Toasts.showError(this@AuthActivity, "✗ Backend not reachable. Last error: ${lastError?.message}")
+                    }
+                }
+                
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toasts.showError(this@AuthActivity, "✗ Connection test failed: ${e.javaClass.simpleName}")
+                }
+            }
+        }
+    }
+    
+    private fun testSimpleConnectivitySilent() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Test basic HTTP connectivity using OkHttp directly (silent)
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                
                 val request = okhttp3.Request.Builder()
                     .url("${BuildConfig.BASE_URL}/swagger")
                     .build()
                 
                 val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    withContext(Dispatchers.Main) {
-                        Toasts.showSuccess(this@AuthActivity, "✓ Backend connected successfully")
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toasts.showWarning(this@AuthActivity, "⚠ Backend responded with code: ${response.code}")
-                    }
-                }
+                android.util.Log.d("AuthActivity", "Backend connectivity test: ${response.code}")
                 response.close()
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toasts.showError(this@AuthActivity, "✗ Connection failed: ${e.javaClass.simpleName}")
-                }
+                android.util.Log.d("AuthActivity", "Backend not available: ${e.javaClass.simpleName}")
+                // Don't show any messages to user
             }
         }
     }
