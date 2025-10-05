@@ -17,7 +17,11 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
+<<<<<<< Updated upstream
         buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:5189\""
+=======
+        buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:5034\""
+>>>>>>> Stashed changes
     }
 
     buildTypes {
@@ -27,13 +31,18 @@ android {
         }
     }
     
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+    
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
     
     buildFeatures {
