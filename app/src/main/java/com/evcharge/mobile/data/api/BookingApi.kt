@@ -231,17 +231,40 @@ class BookingApi(private val apiClient: ApiClient) {
             else -> BookingStatus.PENDING
         }
         
+        // Parse ISO 8601 dates from backend
+        val reservationDateTime = parseIso8601(data.optString("reservationDateTime"))
+        val createdAt = parseIso8601(data.optString("createdAt")) ?: System.currentTimeMillis()
+        val updatedAt = parseIso8601(data.optString("updatedAt")) ?: System.currentTimeMillis()
+        
+        // Calculate end time (backend doesn't provide it, assume 2 hours from start)
+        val endTime = reservationDateTime?.let { it + (2 * 60 * 60 * 1000) } ?: 0L
+        
         return Booking(
             id = data.optString("id"),
-            ownerNic = data.optString("ownerNic"),
+            ownerNic = data.optString("evOwnerNIC", data.optString("ownerNic")), // Backend uses evOwnerNIC
             stationId = data.optString("stationId"),
             stationName = data.optString("stationName"),
-            startTime = data.optLong("startTime"),
-            endTime = data.optLong("endTime"),
+            startTime = reservationDateTime ?: 0L,
+            endTime = endTime,
             status = status,
-            createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-            updatedAt = data.optLong("updatedAt", System.currentTimeMillis()),
-            qrCode = data.optString("qrCode")
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            qrCode = data.optString("qrPayload", data.optString("qrCode")) // Backend uses qrPayload
         )
+    }
+    
+    /**
+     * Parse ISO 8601 date string to timestamp
+     */
+    private fun parseIso8601(dateString: String): Long? {
+        if (dateString.isEmpty()) return null
+        return try {
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+            format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            format.parse(dateString)?.time
+        } catch (e: Exception) {
+            android.util.Log.e("BookingApi", "Failed to parse ISO 8601 date: $dateString", e)
+            null
+        }
     }
 }

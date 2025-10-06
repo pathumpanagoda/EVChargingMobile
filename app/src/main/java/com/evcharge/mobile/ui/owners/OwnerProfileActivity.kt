@@ -153,42 +153,48 @@ class OwnerProfileActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Try to get from server first
                 val result = ownerRepository.getOwner(ownerNic)
                 
-                if (result.isSuccess()) {
-                    ownerProfile = result.getDataOrNull()
-                    Toasts.showInfo(this@OwnerProfileActivity, "Profile loaded from server")
-                } else {
-                    // Fallback to local database
-                    Toasts.showWarning(this@OwnerProfileActivity, "Server unavailable, loading from local storage")
-                    ownerProfile = ownerRepository.getLocalOwner(ownerNic)
-                }
-                
-                if (ownerProfile != null) {
-                    updateUI()
-                } else {
-                    // If no profile found anywhere, create a basic one from session data
-                    createBasicProfile(ownerNic)
-                }
-            } catch (e: Exception) {
-                Toasts.showWarning(this@OwnerProfileActivity, "Backend error, trying local storage: ${e.message}")
-                try {
-                    // Try local database as fallback
-                    ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        ownerProfile = result.getDataOrNull()
+                        Toasts.showInfo(this@OwnerProfileActivity, "Profile loaded from server")
+                    } else {
+                        // Fallback to local database
+                        Toasts.showWarning(this@OwnerProfileActivity, "Server unavailable, loading from local storage")
+                        ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                    }
+                    
                     if (ownerProfile != null) {
                         updateUI()
                     } else {
+                        // If no profile found anywhere, create a basic one from session data
                         createBasicProfile(ownerNic)
                     }
-                } catch (e2: Exception) {
-                    Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e2.message}")
-                    createBasicProfile(ownerNic)
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showWarning(this@OwnerProfileActivity, "Backend error, trying local storage: ${e.message}")
+                    try {
+                        // Try local database as fallback
+                        ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                        if (ownerProfile != null) {
+                            updateUI()
+                        } else {
+                            createBasicProfile(ownerNic)
+                        }
+                    } catch (e2: Exception) {
+                        Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e2.message}")
+                        createBasicProfile(ownerNic)
+                    }
                 }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

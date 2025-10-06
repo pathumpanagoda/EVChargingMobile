@@ -83,9 +83,15 @@ class BookingDetailActivity : AppCompatActivity() {
     
     private fun setupUI() {
         // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Booking Details"
+        try {
+            setSupportActionBar(findViewById(R.id.toolbar))
+            supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            supportActionBar?.title = "Booking Details"
+        } catch (e: IllegalStateException) {
+            // Handle action bar conflict gracefully
+            android.util.Log.w("BookingDetailActivity", "Action bar setup failed: ${e.message}")
+            Toasts.showWarning(this, "Using default action bar")
+        }
     }
     
     private fun setupClickListeners() {
@@ -116,26 +122,32 @@ class BookingDetailActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading booking details...")
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = bookingRepository.getBooking(bookingId)
                 
-                if (result.isSuccess()) {
-                    booking = result.getDataOrNull()
-                    if (booking != null) {
-                        updateUI()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        booking = result.getDataOrNull()
+                        if (booking != null) {
+                            updateUI()
+                        } else {
+                            Toasts.showError(this@BookingDetailActivity, "Booking not found")
+                            finish()
+                        }
                     } else {
-                        Toasts.showError(this@BookingDetailActivity, "Booking not found")
-                        finish()
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to load booking")
                     }
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to load booking")
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingDetailActivity, "Failed to load booking: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingDetailActivity, "Failed to load booking: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
