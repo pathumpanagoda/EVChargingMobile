@@ -62,9 +62,9 @@ If you still get errors:
 
 ## Testing the App:
 
-### Debug Login (Development Only):
-- Username: `123456789V`
-- Password: `password123`
+### Login:
+- Use your registered credentials to login
+- Register a new account if you don't have one
 
 ### Features to Test:
 1. **Owner Registration** - Create new account

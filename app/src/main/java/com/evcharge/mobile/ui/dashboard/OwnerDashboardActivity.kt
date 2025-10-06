@@ -233,29 +233,18 @@ class OwnerDashboardActivity : AppCompatActivity() {
                     updateDashboardStats(stats)
                     Toasts.showSuccess(this@OwnerDashboardActivity, "Connected to backend successfully!")
                 } else {
-                    // If backend fails, use mock data instead of showing error
-                    loadMockDashboardData()
+                    val error = result.getErrorOrNull()
+                    Toasts.showError(this@OwnerDashboardActivity, error?.message ?: "Failed to load dashboard data")
                 }
             } catch (e: Exception) {
-                // If any exception occurs, use mock data
-                loadMockDashboardData()
+                android.util.Log.e("OwnerDashboard", "Error loading dashboard data", e)
+                Toasts.showError(this@OwnerDashboardActivity, "Failed to load dashboard data: ${e.message ?: e.javaClass.simpleName}")
             } finally {
                 loadingView.hide()
             }
         }
     }
     
-    private fun loadMockDashboardData() {
-        // Create mock data for offline mode
-        val mockStats = DashboardStats(
-            pendingCount = 2,
-            approvedCount = 5
-        )
-        updateDashboardStats(mockStats)
-        
-        // Show info message about backend connectivity
-        Toasts.showInfo(this, "Backend server not available. Using demo data.")
-    }
     
     private fun updateDashboardStats(stats: DashboardStats) {
         tvPendingCount.text = stats.pendingCount.toString()

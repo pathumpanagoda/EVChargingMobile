@@ -42,7 +42,6 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var etPassword: TextInputEditText
     private lateinit var btnLogin: MaterialButton
     private lateinit var btnRegister: MaterialButton
-    private lateinit var btnFakeLogin: MaterialButton
     
     private var isOwner = true
     
@@ -82,17 +81,12 @@ class AuthActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.et_password)
         btnLogin = findViewById(R.id.btn_login)
         btnRegister = findViewById(R.id.btn_register)
-        btnFakeLogin = findViewById(R.id.btn_fake_login)
     }
     
     private fun setupUI() {
         // Set default selection
         userTypeToggle.check(R.id.btn_owner)
         
-        // Show debug login in debug builds
-        if (BuildConfig.DEBUG) {
-            findViewById<com.google.android.material.card.MaterialCardView>(R.id.debug_card).visibility = android.view.View.VISIBLE
-        }
     }
     
     private fun setupClickListeners() {
@@ -117,10 +111,6 @@ class AuthActivity : AppCompatActivity() {
             }
         }
         
-        // Fake login button (debug only)
-        btnFakeLogin.setOnClickListener {
-            fillDemoData()
-        }
     }
     
     private fun performLogin() {
@@ -228,10 +218,6 @@ class AuthActivity : AppCompatActivity() {
         }
     }
     
-    private fun fillDemoData() {
-        etUsername.setText("123456789V")
-        etPassword.setText("Password123")
-    }
     
     private fun testSimpleConnectivity() {
         lifecycleScope.launch(Dispatchers.IO) {

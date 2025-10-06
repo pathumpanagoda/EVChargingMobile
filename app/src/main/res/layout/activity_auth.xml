@@ -158,37 +158,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Debug Login (only in debug builds) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/debug_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:visibility="gone"
-            style="@style/CardStyle">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Debug Login"
-                    android:textAppearance="@style/TextAppearance.Title"
-                    android:layout_marginBottom="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_fake_login"
-                    style="@style/SecondaryButton"
-                    android:layout_width="match_parent"
-                    android:text="Fill Demo Data" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 
