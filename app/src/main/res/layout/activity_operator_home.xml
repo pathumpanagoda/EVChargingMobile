@@ -47,7 +47,7 @@
                         android:id="@+id/tv_welcome"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Welcome, Operator!"
+                        android:text="@string/welcome_operator"
                         android:textAppearance="@style/TextAppearance.Title"
                         android:textColor="@color/primary" />
 
@@ -55,8 +55,9 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Scan QR codes to complete bookings"
-                        android:textAppearance="@style/TextAppearance.Subtitle" />
+                        android:text="@string/scan_qr_description"
+                        android:textAppearance="@style/TextAppearance.Subtitle"
+                        android:textColor="@color/text_secondary" />
 
                 </LinearLayout>
 
@@ -86,7 +87,10 @@
                         android:id="@+id/btn_scan_qr"
                         style="@style/PrimaryButton"
                         android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
                         android:text="@string/scan_qr"
+                        android:textColor="@color/white"
                         app:icon="@drawable/ic_qr_code_scanner" />
 
                 </LinearLayout>
@@ -109,15 +113,17 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Instructions"
+                        android:text="@string/instructions"
                         android:textAppearance="@style/TextAppearance.Title"
+                        android:textColor="@color/primary"
                         android:layout_marginBottom="12dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="1. Tap 'Scan QR Code' button\n2. Point camera at booking QR code\n3. Confirm completion when prompted"
-                        android:textAppearance="@style/TextAppearance.Body" />
+                        android:text="@string/scan_instructions"
+                        android:textAppearance="@style/TextAppearance.Body"
+                        android:textColor="@color/text_secondary" />
 
                 </LinearLayout>
 

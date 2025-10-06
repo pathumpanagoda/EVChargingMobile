@@ -32,6 +32,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?attr/colorPrimary"
+            android:contentDescription="@string/tab_bookings"
             app:tabTextColor="@color/white"
             app:tabSelectedTextColor="@color/white"
             app:tabIndicatorColor="@color/white" />
@@ -54,9 +55,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="No bookings found"
+                android:text="@string/no_bookings_found"
                 android:textAppearance="@style/TextAppearance.Title"
                 android:textColor="@color/text_secondary"
+                android:contentDescription="@string/no_bookings_found"
                 android:visibility="gone" />
 
         </FrameLayout>
@@ -71,7 +73,9 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/primary" />
+        android:contentDescription="@string/new_booking"
+        app:backgroundTint="@color/primary"
+        app:tint="@color/white" />
 
     <!-- Loading View -->
     <com.evcharge.mobile.ui.widgets.LoadingView

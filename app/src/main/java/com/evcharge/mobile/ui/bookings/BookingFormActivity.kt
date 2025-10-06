@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -46,7 +47,7 @@ class BookingFormActivity : AppCompatActivity() {
     private lateinit var stationRepository: StationRepository
     
     // UI Components
-    private lateinit var spinnerStation: Spinner
+    private lateinit var etStation: AutoCompleteTextView
     private lateinit var etStartDate: TextInputEditText
     private lateinit var etStartTime: TextInputEditText
     private lateinit var etEndDate: TextInputEditText
@@ -64,72 +65,123 @@ class BookingFormActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_booking_form)
         
-        initializeComponents()
-        setupUI()
-        setupClickListeners()
-        loadStations()
+        try {
+            initializeComponents()
+            setupUI()
+            setupClickListeners()
+            loadStations()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Booking form initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        val stationApi = StationApi(apiClient)
-        
-        bookingRepository = BookingRepository(bookingApi)
-        stationRepository = StationRepository(stationApi)
-        
-        // Initialize UI components
-        spinnerStation = findViewById(R.id.spinner_station)
-        etStartDate = findViewById(R.id.et_start_date)
-        etStartTime = findViewById(R.id.et_start_time)
-        etEndDate = findViewById(R.id.et_end_date)
-        etEndTime = findViewById(R.id.et_end_time)
-        btnCreate = findViewById(R.id.btn_create)
-        loadingView = findViewById(R.id.loading_view)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val bookingApi = BookingApi(apiClient)
+            val stationApi = StationApi(apiClient)
+            
+            bookingRepository = BookingRepository(bookingApi)
+            stationRepository = StationRepository(stationApi)
+            
+            // Initialize UI components
+            etStation = findViewById(R.id.et_station)
+            etStartDate = findViewById(R.id.et_start_date)
+            etStartTime = findViewById(R.id.et_start_time)
+            etEndDate = findViewById(R.id.et_end_date)
+            etEndTime = findViewById(R.id.et_end_time)
+            btnCreate = findViewById(R.id.btn_create)
+            loadingView = findViewById(R.id.loading_view)
+        } catch (e: Exception) {
+            Toasts.showError(this, "Component initialization failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "New Booking"
-        
-        // Set default times (1 hour from now)
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.HOUR, 1)
-        startDateTime = calendar.timeInMillis
-        calendar.add(Calendar.HOUR, 2)
-        endDateTime = calendar.timeInMillis
-        
-        updateDateTimeFields()
+        try {
+            // Set up toolbar with error handling for missing toolbar
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+                supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                supportActionBar?.title = "New Booking"
+            } catch (e: Exception) {
+                // Handle missing toolbar gracefully
+                Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
+            }
+            
+            // Set default times (1 hour from now)
+            val calendar = Calendar.getInstance()
+            calendar.add(Calendar.HOUR, 1)
+            startDateTime = calendar.timeInMillis
+            calendar.add(Calendar.HOUR, 2)
+            endDateTime = calendar.timeInMillis
+            
+            updateDateTimeFields()
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupClickListeners() {
-        // Station selection
-        spinnerStation.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position > 0 && position <= stations.size) {
-                    selectedStationId = stations[position - 1].id
-                } else {
-                    selectedStationId = ""
+        try {
+            // Station selection
+            etStation.setOnItemClickListener { _, _, position, _ ->
+                try {
+                    if (position < stations.size) {
+                        selectedStationId = stations[position].id
+                        etStation.setText(stations[position].name, false)
+                    }
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Station selection failed: ${e.message}")
                 }
             }
             
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                selectedStationId = ""
+            // Date and time pickers
+            etStartDate.setOnClickListener { 
+                try {
+                    showStartDatePicker()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Date picker failed: ${e.message}")
+                }
             }
-        }
-        
-        // Date and time pickers
-        etStartDate.setOnClickListener { showStartDatePicker() }
-        etStartTime.setOnClickListener { showStartTimePicker() }
-        etEndDate.setOnClickListener { showEndDatePicker() }
-        etEndTime.setOnClickListener { showEndTimePicker() }
-        
-        // Create button
-        btnCreate.setOnClickListener {
-            createBooking()
+            etStartTime.setOnClickListener { 
+                try {
+                    showStartTimePicker()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Time picker failed: ${e.message}")
+                }
+            }
+            etEndDate.setOnClickListener { 
+                try {
+                    showEndDatePicker()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Date picker failed: ${e.message}")
+                }
+            }
+            etEndTime.setOnClickListener { 
+                try {
+                    showEndTimePicker()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Time picker failed: ${e.message}")
+                }
+            }
+            
+            // Create button
+            btnCreate.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Creating booking...")
+                    createBooking()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Create booking failed: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
+            throw e
         }
     }
     
@@ -157,12 +209,10 @@ class BookingFormActivity : AppCompatActivity() {
     }
     
     private fun setupStationSpinner() {
-        val stationNames = mutableListOf("Select a station")
-        stationNames.addAll(stations.map { it.name })
+        val stationNames = stations.map { it.name }
         
-        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, stationNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerStation.adapter = adapter
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, stationNames)
+        etStation.setAdapter(adapter)
     }
     
     private fun showStartDatePicker() {

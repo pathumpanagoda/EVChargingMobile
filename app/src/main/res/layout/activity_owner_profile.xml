@@ -27,7 +27,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Profile Information"
+                    android:text="@string/profile_information"
                     android:textAppearance="@style/TextAppearance.Title"
                     android:layout_marginBottom="16dp" />
 
@@ -35,12 +35,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_nic"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/nic"
                     app:startIconDrawable="@drawable/ic_badge">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_nic"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="text"
                         android:maxLines="1" />
 
@@ -50,12 +54,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_name"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/name"
                     app:startIconDrawable="@drawable/ic_person">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_name"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textPersonName"
                         android:maxLines="1" />
 
@@ -65,12 +73,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_email"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/email"
                     app:startIconDrawable="@drawable/ic_email">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_email"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textEmailAddress"
                         android:maxLines="1" />
 
@@ -80,12 +92,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_phone"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/phone"
                     app:startIconDrawable="@drawable/ic_phone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_phone"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="phone"
                         android:maxLines="1" />
 
@@ -106,24 +122,29 @@
                 android:id="@+id/btn_update"
                 style="@style/PrimaryButton"
                 android:layout_width="match_parent"
-                android:text="@string/update_profile" />
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:text="@string/update_profile"
+                android:textColor="@color/white" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_deactivate"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
                 android:text="@string/deactivate_account"
                 android:textColor="@color/error" />
 
         </LinearLayout>
 
-    </LinearLayout>
+        <!-- Loading View -->
+        <com.evcharge.mobile.ui.widgets.LoadingView
+            android:id="@+id/loading_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-    <!-- Loading View -->
-    <com.evcharge.mobile.ui.widgets.LoadingView
-        android:id="@+id/loading_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
+    </LinearLayout>
 
 </ScrollView>

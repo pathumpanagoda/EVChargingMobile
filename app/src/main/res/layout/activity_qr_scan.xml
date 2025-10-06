@@ -50,15 +50,17 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Scan Instructions"
+                    android:text="@string/scan_instructions_title"
                     android:textAppearance="@style/TextAppearance.Title"
+                    android:textColor="@color/primary"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Point the camera at the booking QR code. The booking will be automatically completed when scanned."
-                    android:textAppearance="@style/TextAppearance.Body" />
+                    android:text="@string/scan_instructions_description"
+                    android:textAppearance="@style/TextAppearance.Body"
+                    android:textColor="@color/text_secondary" />
 
             </LinearLayout>
 

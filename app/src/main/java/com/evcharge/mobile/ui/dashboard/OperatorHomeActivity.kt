@@ -35,35 +35,73 @@ class OperatorHomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_operator_home)
         
-        initializeComponents()
-        setupUI()
-        setupClickListeners()
+        try {
+            initializeComponents()
+            setupUI()
+            setupClickListeners()
+        } catch (e: Exception) {
+            com.evcharge.mobile.common.Toasts.showError(this, "Operator dashboard initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
-        
-        // Initialize UI components
-        tvWelcome = findViewById(R.id.tv_welcome)
-        btnScanQr = findViewById(R.id.btn_scan_qr)
-        cardInstructions = findViewById(R.id.card_instructions)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val authApi = AuthApi(apiClient)
+            
+            // Safely initialize database helper
+            val dbHelper = try {
+                App.instance.dbHelper
+            } catch (e: Exception) {
+                // Fallback: create a new instance if App.instance is not ready
+                com.evcharge.mobile.data.db.UserDbHelper(this)
+            }
+            
+            val ownerDao = OwnerDao(dbHelper)
+            authRepository = AuthRepository(authApi, ownerDao, prefs)
+            
+            // Initialize UI components
+            tvWelcome = findViewById(R.id.tv_welcome)
+            btnScanQr = findViewById(R.id.btn_scan_qr)
+            cardInstructions = findViewById(R.id.card_instructions)
+        } catch (e: Exception) {
+            com.evcharge.mobile.common.Toasts.showError(this, "Component initialization failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        
-        tvWelcome.text = "Welcome, Operator!"
+        try {
+            // Set up toolbar with error handling
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+            } catch (e: Exception) {
+                com.evcharge.mobile.common.Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
+            }
+            
+            tvWelcome.text = getString(R.string.welcome_operator)
+        } catch (e: Exception) {
+            com.evcharge.mobile.common.Toasts.showError(this, "UI setup failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupClickListeners() {
-        // Scan QR button
-        btnScanQr.setOnClickListener {
-            startActivity(Intent(this, QrScanActivity::class.java))
+        try {
+            // Scan QR button
+            btnScanQr.setOnClickListener {
+                try {
+                    com.evcharge.mobile.common.Toasts.showInfo(this, "Opening QR Scanner...")
+                    startActivity(Intent(this, QrScanActivity::class.java))
+                } catch (e: Exception) {
+                    com.evcharge.mobile.common.Toasts.showError(this, "Failed to open QR Scanner: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            com.evcharge.mobile.common.Toasts.showError(this, "Click listeners setup failed: ${e.message}")
+            throw e
         }
     }
     
