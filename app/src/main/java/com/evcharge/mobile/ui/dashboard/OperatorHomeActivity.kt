@@ -28,6 +28,7 @@ class OperatorHomeActivity : AppCompatActivity() {
     
     // UI Components
     private lateinit var tvWelcome: MaterialTextView
+    private lateinit var tvOperatorName: MaterialTextView
     private lateinit var btnScanQr: MaterialButton
     private lateinit var cardInstructions: MaterialCardView
     
@@ -64,6 +65,7 @@ class OperatorHomeActivity : AppCompatActivity() {
             
             // Initialize UI components
             tvWelcome = findViewById(R.id.tv_welcome)
+            tvOperatorName = findViewById(R.id.tv_operator_name)
             btnScanQr = findViewById(R.id.btn_scan_qr)
             cardInstructions = findViewById(R.id.card_instructions)
         } catch (e: Exception) {
@@ -81,7 +83,31 @@ class OperatorHomeActivity : AppCompatActivity() {
                 com.evcharge.mobile.common.Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
             }
             
-            tvWelcome.text = getString(R.string.welcome_operator)
+            // Set welcome message with user name and NIC (similar to React frontend)
+            val userName = prefs.getName()
+            val userNIC = prefs.getNIC()
+            val userRole = prefs.getRole()
+            
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userName.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, Operator!"
+            } else {
+                tvWelcome.text = "Hello, Operator!"
+            }
+            
+            // Set operator name and NIC (similar to React: username/name and (role))
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvOperatorName.text = "$userName ($userNIC)"
+            } else if (userName.isNotEmpty()) {
+                tvOperatorName.text = userName
+            } else if (userNIC.isNotEmpty()) {
+                tvOperatorName.text = "NIC: $userNIC"
+            } else {
+                tvOperatorName.text = "Operator"
+            }
         } catch (e: Exception) {
             com.evcharge.mobile.common.Toasts.showError(this, "UI setup failed: ${e.message}")
             throw e

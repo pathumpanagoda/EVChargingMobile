@@ -9,6 +9,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * HTTP client for API communication using OkHttp
@@ -34,7 +36,7 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a POST request
      */
-    fun post(path: String, body: JSONObject): JSONObject {
+    suspend fun post(path: String, body: JSONObject): JSONObject {
         val requestBody = body.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url("$BASE_URL$path")
@@ -47,7 +49,7 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a GET request
      */
-    fun get(path: String): JSONObject {
+    suspend fun get(path: String): JSONObject {
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .get()
@@ -59,7 +61,7 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a PUT request
      */
-    fun put(path: String, body: JSONObject): JSONObject {
+    suspend fun put(path: String, body: JSONObject): JSONObject {
         val requestBody = body.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url("$BASE_URL$path")
@@ -72,7 +74,7 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a DELETE request
      */
-    fun delete(path: String): JSONObject {
+    suspend fun delete(path: String): JSONObject {
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .delete()
@@ -84,106 +86,108 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Execute HTTP request and return JSON response
      */
-    private fun executeRequest(request: Request): JSONObject {
-        return try {
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: "{}"
-            
-            when (response.code) {
-                200, 201 -> {
-                    try {
-                        JSONObject(responseBody)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to parse JSON response", e)
+    private suspend fun executeRequest(request: Request): JSONObject {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "{}"
+                
+                when (response.code) {
+                    200, 201 -> {
+                        try {
+                            JSONObject(responseBody)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to parse JSON response", e)
+                            JSONObject().apply {
+                                put("success", false)
+                                put("message", "Invalid response format")
+                            }
+                        }
+                    }
+                    400 -> {
                         JSONObject().apply {
                             put("success", false)
-                            put("message", "Invalid response format")
+                            put("message", "Bad request. Please check your input.")
+                            put("error", "BAD_REQUEST")
+                        }
+                    }
+                    401 -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Unauthorized. Please login again.")
+                            put("error", "UNAUTHORIZED")
+                        }
+                    }
+                    403 -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Forbidden. You don't have permission to perform this action.")
+                            put("error", "FORBIDDEN")
+                        }
+                    }
+                    404 -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Resource not found.")
+                            put("error", "NOT_FOUND")
+                        }
+                    }
+                    409 -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Conflict. Resource already exists or is in use.")
+                            put("error", "CONFLICT")
+                        }
+                    }
+                    422 -> {
+                        try {
+                            val errorJson = JSONObject(responseBody)
+                            JSONObject().apply {
+                                put("success", false)
+                                put("message", errorJson.optString("message", "Validation error"))
+                                put("error", "VALIDATION_ERROR")
+                                put("details", errorJson.optJSONObject("details"))
+                            }
+                        } catch (e: Exception) {
+                            JSONObject().apply {
+                                put("success", false)
+                                put("message", "Validation error")
+                                put("error", "VALIDATION_ERROR")
+                            }
+                        }
+                    }
+                    500 -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Internal server error. Please try again later.")
+                            put("error", "INTERNAL_ERROR")
+                        }
+                    }
+                    else -> {
+                        JSONObject().apply {
+                            put("success", false)
+                            put("message", "Unexpected error occurred. Code: ${response.code}")
+                            put("error", "UNKNOWN_ERROR")
                         }
                     }
                 }
-                400 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Bad request. Please check your input.")
-                        put("error", "BAD_REQUEST")
-                    }
+            } catch (e: IOException) {
+                Log.e(TAG, "Network error", e)
+                JSONObject().apply {
+                    put("success", false)
+                    put("message", "Network error. Please check your connection.")
+                    put("error", "NETWORK_ERROR")
                 }
-                401 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Unauthorized. Please login again.")
-                        put("error", "UNAUTHORIZED")
-                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error", e)
+                Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+                Log.e(TAG, "Exception message: ${e.message}")
+                Log.e(TAG, "Exception stack trace: ${e.stackTraceToString()}")
+                JSONObject().apply {
+                    put("success", false)
+                    put("message", "An unexpected error occurred: ${e.javaClass.simpleName} - ${e.message}")
+                    put("error", "UNKNOWN_ERROR")
                 }
-                403 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Forbidden. You don't have permission to perform this action.")
-                        put("error", "FORBIDDEN")
-                    }
-                }
-                404 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Resource not found.")
-                        put("error", "NOT_FOUND")
-                    }
-                }
-                409 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Conflict. Resource already exists or is in use.")
-                        put("error", "CONFLICT")
-                    }
-                }
-                422 -> {
-                    try {
-                        val errorJson = JSONObject(responseBody)
-                        JSONObject().apply {
-                            put("success", false)
-                            put("message", errorJson.optString("message", "Validation error"))
-                            put("error", "VALIDATION_ERROR")
-                            put("details", errorJson.optJSONObject("details"))
-                        }
-                    } catch (e: Exception) {
-                        JSONObject().apply {
-                            put("success", false)
-                            put("message", "Validation error")
-                            put("error", "VALIDATION_ERROR")
-                        }
-                    }
-                }
-                500 -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Internal server error. Please try again later.")
-                        put("error", "INTERNAL_ERROR")
-                    }
-                }
-                else -> {
-                    JSONObject().apply {
-                        put("success", false)
-                        put("message", "Unexpected error occurred. Code: ${response.code}")
-                        put("error", "UNKNOWN_ERROR")
-                    }
-                }
-            }
-        } catch (e: IOException) {
-            Log.e(TAG, "Network error", e)
-            JSONObject().apply {
-                put("success", false)
-                put("message", "Network error. Please check your connection.")
-                put("error", "NETWORK_ERROR")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error", e)
-            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
-            Log.e(TAG, "Exception message: ${e.message}")
-            Log.e(TAG, "Exception stack trace: ${e.stackTraceToString()}")
-            JSONObject().apply {
-                put("success", false)
-                put("message", "An unexpected error occurred: ${e.javaClass.simpleName} - ${e.message}")
-                put("error", "UNKNOWN_ERROR")
             }
         }
     }

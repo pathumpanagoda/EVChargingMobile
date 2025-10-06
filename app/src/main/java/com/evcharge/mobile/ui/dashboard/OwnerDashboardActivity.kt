@@ -103,21 +103,38 @@ class OwnerDashboardActivity : AppCompatActivity() {
     
     private fun setupUI() {
         try {
+            // Set welcome message with user name and NIC (similar to React frontend)
+            val userName = prefs.getName()
+            val userNIC = prefs.getNIC()
+            val userRole = prefs.getRole()
+            
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userName.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, EV Owner!"
+            } else {
+                tvWelcome.text = "Hello, EV Owner!"
+            }
+            
+            // Set owner name and NIC (similar to React: username/name and (role))
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvOwnerName.text = "$userName ($userNIC)"
+            } else if (userName.isNotEmpty()) {
+                tvOwnerName.text = userName
+            } else if (userNIC.isNotEmpty()) {
+                tvOwnerName.text = "NIC: $userNIC"
+            } else {
+                tvOwnerName.text = "EV Owner"
+            }
+            
             // Set up toolbar safely
             try {
                 setSupportActionBar(findViewById(R.id.toolbar))
             } catch (e: Exception) {
                 // If toolbar setup fails, continue without it
                 android.util.Log.w("OwnerDashboardActivity", "Toolbar setup failed: ${e.message}")
-            }
-            
-            // Load owner name
-            val ownerNic = prefs.getNIC()
-            val localOwner = ownerRepository.getLocalOwner(ownerNic)
-            if (localOwner != null && localOwner.name.isNotEmpty()) {
-                tvOwnerName.text = localOwner.name
-            } else {
-                tvOwnerName.text = "EV Owner"
             }
         } catch (e: Exception) {
             Toasts.showError(this, "UI setup failed: ${e.message}")
