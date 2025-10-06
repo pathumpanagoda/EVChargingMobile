@@ -1,24 +1,19 @@
 package com.evcharge.mobile
 
 import android.app.Application
+import com.evcharge.mobile.common.Prefs
 import com.evcharge.mobile.data.db.UserDbHelper
 
-/**
- * Main Application class for EV Charging Mobile app
- */
 class App : Application() {
-    
-    companion object {
-        lateinit var instance: App
-            private set
-    }
-    
-    lateinit var dbHelper: UserDbHelper
-        private set
+    val dbHelper = UserDbHelper(this)
     
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        dbHelper = UserDbHelper(this)
+        Prefs.init(this)
+    }
+    
+    companion object {
+        @Volatile private var _instance: App? = null
+        fun instance(): App = _instance ?: error("App not initialized")
     }
 }

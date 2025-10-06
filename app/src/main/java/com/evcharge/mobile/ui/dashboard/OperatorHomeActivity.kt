@@ -36,10 +36,10 @@ class OperatorHomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_operator_home)
         
         // Initialize prefs first
-        prefs = Prefs(this)
+        prefs = Prefs.instance()
         
         // Check if user is properly authenticated
-        if (!prefs.hasValidSession()) {
+        if (prefs.getToken() == null) {
             com.evcharge.mobile.common.Toasts.showError(this, "Session expired. Please login again.")
             val intent = Intent(this, com.evcharge.mobile.ui.auth.AuthActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -54,10 +54,7 @@ class OperatorHomeActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
+        authRepository = AuthRepository()
         
         // Initialize UI components
         tvWelcome = findViewById(R.id.tv_welcome)

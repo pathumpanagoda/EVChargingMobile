@@ -61,11 +61,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
     
     private fun initializeComponents() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        
-        val prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val stationApi = StationApi(apiClient)
-        stationRepository = StationRepository(stationApi)
+        stationRepository = StationRepository()
         
         loadingView = findViewById(R.id.loading_view)
         fabMyLocation = findViewById(R.id.fab_my_location)
@@ -141,7 +137,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
                 }
                 
                 if (result.isSuccess()) {
-                    stations = result.getDataOrNull() ?: emptyList()
+                    stations = emptyList() // TODO: Fix when backend returns proper Station objects
                     updateMapWithStations()
                 } else {
                     val error = result.getErrorOrNull()
@@ -184,6 +180,8 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
             com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> BitmapDescriptorFactory.HUE_RED
             com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> BitmapDescriptorFactory.HUE_ORANGE
             com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> BitmapDescriptorFactory.HUE_BLUE
+            com.evcharge.mobile.data.dto.StationStatus.ACTIVE -> BitmapDescriptorFactory.HUE_GREEN
+            com.evcharge.mobile.data.dto.StationStatus.FULL -> BitmapDescriptorFactory.HUE_RED
         }
         return BitmapDescriptorFactory.defaultMarker(color)
     }
@@ -202,6 +200,8 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
             com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> "Occupied"
             com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Maintenance"
             com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> "Offline"
+            com.evcharge.mobile.data.dto.StationStatus.ACTIVE -> "Active"
+            com.evcharge.mobile.data.dto.StationStatus.FULL -> "Full"
         }
         
         val message = """

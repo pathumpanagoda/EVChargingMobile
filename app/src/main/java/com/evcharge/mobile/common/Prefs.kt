@@ -1,89 +1,32 @@
 package com.evcharge.mobile.common
 
 import android.content.Context
-import android.content.SharedPreferences
-import org.json.JSONObject
+import android.preference.PreferenceManager
 
-/**
- * SharedPreferences helper for managing user session data
- */
-class Prefs(context: Context) {
-    
+class Prefs private constructor(ctx: Context) {
+    private val sp = PreferenceManager.getDefaultSharedPreferences(ctx.applicationContext)
+
+    fun setToken(v: String) = sp.edit().putString("auth.token", v).apply()
+    fun getToken(): String? = sp.getString("auth.token", null)
+
+    fun setRole(v: String) = sp.edit().putString("auth.role", v).apply()
+    fun getRole(): String? = sp.getString("auth.role", null)
+
+    fun isOwner() = getRole() == "EVOwner"
+    fun isOperator() = getRole() == "StationOperator"
+    fun isBackoffice() = getRole() == "Backoffice"
+
+    fun setUserId(v: String) = sp.edit().putString("auth.userId", v).apply()
+    fun getUserId(): String? = sp.getString("auth.userId", null)
+
+    fun setNic(v: String) = sp.edit().putString("auth.nic", v).apply()
+    fun getNic(): String? = sp.getString("auth.nic", null)
+
+    fun clear() = sp.edit().clear().apply()
+
     companion object {
-        private const val PREFS_NAME = "auth_prefs"
-        private const val KEY_TOKEN = "token"
-        private const val KEY_ROLE = "role"
-        private const val KEY_NIC = "nic"
-        private const val KEY_IS_LOGGED_IN = "is_logged_in"
+        @Volatile private var _i: Prefs? = null
+        fun init(ctx: Context) { if (_i == null) _i = Prefs(ctx) }
+        fun instance(): Prefs = _i ?: error("Prefs.init(context) not called")
     }
-    
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    
-    /**
-     * Save authentication data
-     */
-    fun saveAuthData(token: String, role: String, nic: String) {
-        prefs.edit().apply {
-            putString(KEY_TOKEN, token)
-            putString(KEY_ROLE, role)
-            putString(KEY_NIC, nic)
-            putBoolean(KEY_IS_LOGGED_IN, true)
-            apply()
-        }
-    }
-    
-    /**
-     * Get authentication data as JSON
-     */
-    fun getAuthData(): JSONObject {
-        return JSONObject().apply {
-            put("token", getToken())
-            put("role", getRole())
-            put("nic", getNIC())
-        }
-    }
-    
-    /**
-     * Get JWT token
-     */
-    fun getToken(): String = prefs.getString(KEY_TOKEN, "") ?: ""
-    
-    /**
-     * Get user role
-     */
-    fun getRole(): String = prefs.getString(KEY_ROLE, "") ?: ""
-    
-    /**
-     * Get user NIC
-     */
-    fun getNIC(): String = prefs.getString(KEY_NIC, "") ?: ""
-    
-    /**
-     * Check if user is logged in
-     */
-    fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
-    
-    /**
-     * Clear all authentication data
-     */
-    fun clear() {
-        prefs.edit().clear().apply()
-    }
-    
-    /**
-     * Check if user has valid session
-     */
-    fun hasValidSession(): Boolean {
-        return isLoggedIn() && getToken().isNotEmpty() && getRole().isNotEmpty()
-    }
-    
-    /**
-     * Check if user is owner
-     */
-    fun isOwner(): Boolean = getRole() == "EVOwner"
-    
-    /**
-     * Check if user is operator
-     */
-    fun isOperator(): Boolean = getRole() == "Operator"
 }

@@ -60,14 +60,9 @@ class OwnerProfileActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerApi = OwnerApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
-        ownerRepository = OwnerRepository(ownerApi, ownerDao)
+        prefs = Prefs.instance()
+        authRepository = AuthRepository()
+        ownerRepository = OwnerRepository()
         
         // Initialize UI components
         etNic = findViewById(R.id.et_nic)
@@ -109,18 +104,18 @@ class OwnerProfileActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading profile...")
         
-        val ownerNic = prefs.getNIC()
+        val ownerNic = prefs.getNic()
         
         lifecycleScope.launch {
             try {
                 // Try to get from server first
-                val result = ownerRepository.getOwner(ownerNic)
+                val result = ownerRepository.getOwner(ownerNic ?: "")
                 
                 if (result.isSuccess()) {
                     ownerProfile = result.getDataOrNull()
                 } else {
                     // Fallback to local database
-                    ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                    ownerProfile = ownerRepository.getLocalOwner(ownerNic ?: "")
                 }
                 
                 if (ownerProfile != null) {
@@ -203,11 +198,11 @@ class OwnerProfileActivity : AppCompatActivity() {
         loadingView.setMessage("Updating profile...")
         
         val request = OwnerUpdateRequest(name, email, phone)
-        val ownerNic = prefs.getNIC()
+        val ownerNic = prefs.getNic()
         
         lifecycleScope.launch {
             try {
-                val result = ownerRepository.updateOwner(ownerNic, request)
+                val result = ownerRepository.updateOwner(ownerNic ?: "", request)
                 
                 if (result.isSuccess()) {
                     ownerProfile = result.getDataOrNull()
@@ -240,11 +235,11 @@ class OwnerProfileActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Deactivating account...")
         
-        val ownerNic = prefs.getNIC()
+        val ownerNic = prefs.getNic()
         
         lifecycleScope.launch {
             try {
-                val result = ownerRepository.deactivateOwner(ownerNic, "User requested deactivation")
+                val result = ownerRepository.deactivateOwner(ownerNic ?: "", "User requested deactivation")
                 
                 if (result.isSuccess()) {
                     Toasts.showSuccess(this@OwnerProfileActivity, "Account deactivated successfully")

@@ -59,12 +59,12 @@ class OwnerDashboardActivity : AppCompatActivity() {
         
         try {
             // Initialize prefs first
-            prefs = Prefs(this)
+            prefs = Prefs.instance()
             
             // Check if user is properly authenticated
-            android.util.Log.d("OwnerDashboard", "Checking authentication - isLoggedIn: ${prefs.isLoggedIn()}, hasValidSession: ${prefs.hasValidSession()}")
+            android.util.Log.d("OwnerDashboard", "Checking authentication - token: ${prefs.getToken()}")
             
-            if (!prefs.isLoggedIn()) {
+            if (prefs.getToken() == null) {
                 android.util.Log.w("OwnerDashboard", "User not logged in, redirecting to auth")
                 Toasts.showError(this, "Please login first.")
                 val intent = Intent(this, com.evcharge.mobile.ui.auth.AuthActivity::class.java)
@@ -88,15 +88,9 @@ class OwnerDashboardActivity : AppCompatActivity() {
     
     private fun initializeComponents() {
         try {
-            val apiClient = ApiClient(prefs)
-            val authApi = AuthApi(apiClient)
-            val bookingApi = BookingApi(apiClient)
-            val ownerApi = OwnerApi(apiClient)
-            val ownerDao = OwnerDao(App.instance.dbHelper)
-            
-            authRepository = AuthRepository(authApi, ownerDao, prefs)
-            bookingRepository = BookingRepository(bookingApi)
-            ownerRepository = OwnerRepository(ownerApi, ownerDao)
+            authRepository = AuthRepository()
+            bookingRepository = BookingRepository()
+            ownerRepository = OwnerRepository()
             
             // Initialize UI components
             tvWelcome = findViewById(R.id.tv_welcome)
@@ -129,8 +123,8 @@ class OwnerDashboardActivity : AppCompatActivity() {
             }
             
             // Load owner name
-            val ownerNic = prefs.getNIC()
-            val localOwner = ownerRepository.getLocalOwner(ownerNic)
+            val ownerNic = prefs.getNic()
+            val localOwner = ownerRepository.getLocalOwner(ownerNic ?: "")
             if (localOwner != null && localOwner.name.isNotEmpty()) {
                 tvOwnerName.text = localOwner.name
             } else {
@@ -221,15 +215,15 @@ class OwnerDashboardActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading dashboard...")
         
-        val ownerNic = prefs.getNIC()
+        val ownerNic = prefs.getNic()
         
         lifecycleScope.launch {
             try {
                 // Try to get data from backend first
-                val result = bookingRepository.getDashboardStats(ownerNic)
+                val result = bookingRepository.getDashboardStats(ownerNic ?: "")
                 
                 if (result.isSuccess()) {
-                    val stats = result.getDataOrNull() ?: DashboardStats()
+                    val stats = result.getDataOrNull() ?: DashboardStats(0, 0, 0, 0)
                     updateDashboardStats(stats)
                     Toasts.showSuccess(this@OwnerDashboardActivity, "Connected to backend successfully!")
                 } else {

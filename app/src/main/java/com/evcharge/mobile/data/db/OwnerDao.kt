@@ -20,7 +20,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             put(UserDbHelper.COLUMN_NAME, owner.name)
             put(UserDbHelper.COLUMN_EMAIL, owner.email)
             put(UserDbHelper.COLUMN_PHONE, owner.phone)
-            put(UserDbHelper.COLUMN_ACTIVE, if (owner.active) 1 else 0)
+            put(UserDbHelper.COLUMN_ACTIVE, if (owner.isActive) 1 else 0)
             put(UserDbHelper.COLUMN_CREATED_AT, owner.createdAt)
             put(UserDbHelper.COLUMN_UPDATED_AT, owner.updatedAt)
         }
@@ -44,7 +44,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             put(UserDbHelper.COLUMN_NAME, owner.name)
             put(UserDbHelper.COLUMN_EMAIL, owner.email)
             put(UserDbHelper.COLUMN_PHONE, owner.phone)
-            put(UserDbHelper.COLUMN_ACTIVE, if (owner.active) 1 else 0)
+            put(UserDbHelper.COLUMN_ACTIVE, if (owner.isActive) 1 else 0)
             put(UserDbHelper.COLUMN_UPDATED_AT, Datex.now())
         }
         
@@ -246,9 +246,9 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
                 name = cursor.getString(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_NAME)),
                 email = cursor.getString(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_EMAIL)),
                 phone = cursor.getString(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_PHONE)),
-                active = cursor.getInt(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_ACTIVE)) == 1,
-                createdAt = cursor.getLong(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_CREATED_AT)),
-                updatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_UPDATED_AT))
+                isActive = cursor.getInt(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_ACTIVE)) == 1,
+                createdAt = cursor.getString(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_CREATED_AT)),
+                updatedAt = cursor.getString(cursor.getColumnIndexOrThrow(UserDbHelper.COLUMN_UPDATED_AT))
             )
         } catch (e: Exception) {
             null

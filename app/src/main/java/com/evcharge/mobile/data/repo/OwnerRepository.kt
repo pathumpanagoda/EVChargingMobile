@@ -1,25 +1,26 @@
 package com.evcharge.mobile.data.repo
 
-import com.evcharge.mobile.common.Result
+import com.evcharge.mobile.common.AppResult
 import com.evcharge.mobile.common.getDataOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.OwnerApi
 import com.evcharge.mobile.data.db.OwnerDao
 import com.evcharge.mobile.data.dto.OwnerProfile
 import com.evcharge.mobile.data.dto.OwnerUpdateRequest
+import com.evcharge.mobile.App
 
 /**
  * Repository for EV Owner operations
  */
 class OwnerRepository(
-    private val ownerApi: OwnerApi,
-    private val ownerDao: OwnerDao
+    private val ownerApi: OwnerApi = OwnerApi(),
+    private val ownerDao: OwnerDao = OwnerDao(com.evcharge.mobile.App.instance().dbHelper)
 ) {
     
     /**
      * Get owner profile from server
      */
-    suspend fun getOwner(nic: String): Result<OwnerProfile> {
+    suspend fun getOwner(nic: String): AppResult<OwnerProfile> {
         return try {
             val result = ownerApi.getOwner(nic)
             
@@ -33,7 +34,7 @@ class OwnerRepository(
             
             result
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
@@ -45,7 +46,7 @@ class OwnerRepository(
     /**
      * Update owner profile
      */
-    suspend fun updateOwner(nic: String, request: OwnerUpdateRequest): Result<OwnerProfile> {
+    suspend fun updateOwner(nic: String, request: OwnerUpdateRequest): AppResult<OwnerProfile> {
         return try {
             val result = ownerApi.updateOwner(nic, request)
             
@@ -59,14 +60,14 @@ class OwnerRepository(
             
             result
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
     /**
      * Deactivate owner account
      */
-    suspend fun deactivateOwner(nic: String, reason: String? = null): Result<Boolean> {
+    suspend fun deactivateOwner(nic: String, reason: String? = null): AppResult<Boolean> {
         return try {
             val result = ownerApi.deactivateOwner(nic, reason)
             
@@ -77,7 +78,7 @@ class OwnerRepository(
             
             result
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     

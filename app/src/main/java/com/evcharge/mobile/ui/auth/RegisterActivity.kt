@@ -49,11 +49,8 @@ class RegisterActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
+        prefs = Prefs.instance()
+        authRepository = AuthRepository()
         
         // Initialize UI components
         etNic = findViewById(R.id.et_nic)
@@ -102,8 +99,8 @@ class RegisterActivity : AppCompatActivity() {
                 val result = authRepository.registerOwner(request)
                 
                 if (result.isSuccess()) {
-                    val registerResponse = result.getDataOrNull()
-                    if (registerResponse?.data != null) {
+                    val success = result.getDataOrNull()
+                    if (success == true) {
                         Toasts.showSuccess(this@RegisterActivity, "Registration successful")
                         navigateToDashboard()
                     } else {

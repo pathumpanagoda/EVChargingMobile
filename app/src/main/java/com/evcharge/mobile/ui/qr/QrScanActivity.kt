@@ -44,11 +44,7 @@ class QrScanActivity : AppCompatActivity() {
     
     private fun initializeComponents() {
         barcodeView = findViewById(R.id.barcode_scanner)
-        
-        val prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
+        bookingRepository = BookingRepository()
     }
     
     private fun setupUI() {
@@ -113,7 +109,7 @@ class QrScanActivity : AppCompatActivity() {
     }
     
     private fun completeBooking(bookingId: String, qrCode: String) {
-        val request = BookingCompleteRequest(bookingId, qrCode)
+        val request = BookingCompleteRequest(qrCode)
         
         // Show loading
         Toasts.showLoading(this, "Processing booking...")

@@ -57,7 +57,7 @@ class AuthActivity : AppCompatActivity() {
         testSimpleConnectivity()
         
         // Check if user is already logged in
-        if (prefs.isLoggedIn()) {
+        if (prefs.getToken() != null) {
             // Navigate to dashboard without making API calls immediately
             try {
                 navigateToDashboard()
@@ -69,11 +69,8 @@ class AuthActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
+        prefs = Prefs.instance()
+        authRepository = AuthRepository()
         
         // Initialize UI components
         userTypeToggle = findViewById(R.id.user_type_toggle)
@@ -132,42 +129,24 @@ class AuthActivity : AppCompatActivity() {
         btnLogin.isEnabled = false
         btnLogin.text = "Logging in..."
         
-        val request = LoginRequest(username, password)
-        
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 withContext(Dispatchers.Main) {
                     Toasts.showInfo(this@AuthActivity, "Attempting login with: $username")
                 }
-                val result = authRepository.login(request)
+                val result = authRepository.login(username, password)
                 
                 if (result.isSuccess()) {
-                    val loginResponse = result.getDataOrNull()
-                    if (loginResponse != null) {
-                        // Check if account is deactivated (for owners)
-                        if (isOwner && loginResponse.role == "EVOwner") {
-                            val statusResult = authRepository.checkAccountStatus(loginResponse.nic ?: "")
-                            if (statusResult.isSuccess()) {
-                                val isActive = statusResult.getDataOrNull() ?: true
-                                if (!isActive) {
-                                    withContext(Dispatchers.Main) {
-                                        Toasts.showError(this@AuthActivity, "Your account is deactivated. Contact Backoffice for reactivation.")
-                                    }
-                                    return@launch
-                                }
-                            }
-                        }
-                        
+                    val tokenData = result.getDataOrNull()
+                    if (tokenData != null) {
                         withContext(Dispatchers.Main) {
                             Toasts.showSuccess(this@AuthActivity, "Login successful")
-                            // Debug: Log the role and navigation decision
-                            android.util.Log.d("AuthActivity", "User role: ${loginResponse.role}")
+                            android.util.Log.d("AuthActivity", "User role: ${tokenData.role}")
                             android.util.Log.d("AuthActivity", "Is owner: ${prefs.isOwner()}")
                             android.util.Log.d("AuthActivity", "Is operator: ${prefs.isOperator()}")
                             
-                            // Add a small delay to ensure login is fully processed
                             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                navigateToDashboard()
+                                onLoginSuccess(tokenData)
                             }, 500)
                         }
                     }
@@ -190,6 +169,43 @@ class AuthActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+    
+    private fun onLoginSuccess(tokenData: com.evcharge.mobile.data.dto.TokenData) {
+        when (tokenData.role) {
+            "EVOwner" -> navigateToOwnerHome()
+            "StationOperator" -> navigateToOperatorHome()
+            "Backoffice" -> navigateToBackofficeHome()
+            else -> showError("Unknown role: ${tokenData.role}")
+        }
+    }
+    
+    private fun navigateToOwnerHome() {
+        try {
+            startActivity(Intent(this, OwnerDashboardActivity::class.java))
+            finish()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Failed to navigate to owner dashboard: ${e.message}")
+        }
+    }
+    
+    private fun navigateToOperatorHome() {
+        try {
+            startActivity(Intent(this, OperatorHomeActivity::class.java))
+            finish()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Failed to navigate to operator dashboard: ${e.message}")
+        }
+    }
+    
+    private fun navigateToBackofficeHome() {
+        // TODO: Create BackofficeHomeActivity or use existing dashboard
+        Toasts.showInfo(this, "Backoffice access - redirecting to operator dashboard")
+        navigateToOperatorHome()
+    }
+    
+    private fun showError(message: String) {
+        Toasts.showError(this, message)
     }
     
     private fun navigateToDashboard() {

@@ -1,106 +1,128 @@
 package com.evcharge.mobile.data.api
 
-import com.evcharge.mobile.common.Result
+import com.evcharge.mobile.common.AppResult
 import com.evcharge.mobile.data.dto.OwnerProfile
 import com.evcharge.mobile.data.dto.OwnerUpdateRequest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
 import org.json.JSONObject
 
-/**
- * EV Owner API service
- */
-class OwnerApi(private val apiClient: ApiClient) {
+class OwnerApi(private val http: okhttp3.OkHttpClient = ApiClient.client()) {
+    private val json = "application/json; charset=utf-8".toMediaType()
     
-    /**
-     * Get owner profile by NIC
-     */
-    suspend fun getOwner(nic: String): Result<OwnerProfile> {
+    suspend fun getOwner(nic: String): AppResult<OwnerProfile> {
         return try {
-            val response = apiClient.get("/api/evowner/$nic")
+            val req = ApiClient.requestBuilder("/api/evowner/$nic")
+                .get()
+                .addHeader("Accept", "application/json")
+                .build()
             
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val owner = OwnerProfile(
-                        nic = data.optString("nic"),
-                        name = data.optString("name"),
-                        email = data.optString("email"),
-                        phone = data.optString("phone"),
-                        active = data.optBoolean("active", true),
-                        createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-                        updatedAt = data.optLong("updatedAt", System.currentTimeMillis())
-                    )
-                    Result.Success(owner)
-                } else {
-                    Result.Error(Exception("Invalid response format"))
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
                 }
-            } else {
-                val message = response.optString("message", "Failed to get owner profile")
-                Result.Error(Exception(message))
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val owner = parseOwner(data)
+                        AppResult.Ok(owner)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to get owner")
+                    AppResult.Err(Exception(message))
+                }
             }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
-    /**
-     * Update owner profile
-     */
-    suspend fun updateOwner(nic: String, request: OwnerUpdateRequest): Result<OwnerProfile> {
+    suspend fun updateOwner(nic: String, request: OwnerUpdateRequest): AppResult<OwnerProfile> {
         return try {
             val body = JSONObject().apply {
-                put("name", request.name)
-                put("email", request.email)
-                put("phone", request.phone)
+                request.name?.let { put("name", it) }
+                request.email?.let { put("email", it) }
+                request.phone?.let { put("phone", it) }
+                request.address?.let { put("address", it) }
             }
             
-            val response = apiClient.put("/api/evowner/$nic", body)
+            val req = ApiClient.requestBuilder("/api/evowner/$nic")
+                .put(RequestBody.create(json, body.toString()))
+                .addHeader("Accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .build()
             
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val owner = OwnerProfile(
-                        nic = data.optString("nic"),
-                        name = data.optString("name"),
-                        email = data.optString("email"),
-                        phone = data.optString("phone"),
-                        active = data.optBoolean("active", true),
-                        createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-                        updatedAt = data.optLong("updatedAt", System.currentTimeMillis())
-                    )
-                    Result.Success(owner)
-                } else {
-                    Result.Error(Exception("Invalid response format"))
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
                 }
-            } else {
-                val message = response.optString("message", "Failed to update owner profile")
-                Result.Error(Exception(message))
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val owner = parseOwner(data)
+                        AppResult.Ok(owner)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to update owner")
+                    AppResult.Err(Exception(message))
+                }
             }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
-    /**
-     * Deactivate owner account
-     */
-    suspend fun deactivateOwner(nic: String, reason: String? = null): Result<Boolean> {
+    suspend fun deactivateOwner(nic: String, reason: String? = null): AppResult<Boolean> {
         return try {
             val body = JSONObject().apply {
-                if (reason != null) {
-                    put("reason", reason)
+                reason?.let { put("reason", it) }
+            }
+            
+            val req = ApiClient.requestBuilder("/api/evowner/$nic/deactivate")
+                .post(RequestBody.create(json, body.toString()))
+                .addHeader("Accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .build()
+            
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    AppResult.Ok(true)
+                } else {
+                    val message = obj.optString("message", "Failed to deactivate owner")
+                    AppResult.Err(Exception(message))
                 }
             }
-            
-            val response = apiClient.post("/api/evowner/$nic/deactivate", body)
-            
-            if (response.optBoolean("success", false)) {
-                Result.Success(true)
-            } else {
-                val message = response.optString("message", "Failed to deactivate account")
-                Result.Error(Exception(message))
-            }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
+    }
+    
+    private fun parseOwner(data: JSONObject): OwnerProfile {
+        return OwnerProfile(
+            nic = data.optString("nic", ""),
+            name = data.optString("name", ""),
+            email = data.optString("email", ""),
+            phone = data.optString("phone", null),
+            address = data.optString("address", null),
+            isActive = data.optBoolean("isActive", true),
+            createdAt = data.optString("createdAt", ""),
+            updatedAt = data.optString("updatedAt", "")
+        )
     }
 }

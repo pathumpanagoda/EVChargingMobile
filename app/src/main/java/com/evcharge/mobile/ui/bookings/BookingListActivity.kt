@@ -17,7 +17,8 @@ import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
 import com.evcharge.mobile.data.dto.Booking
-import com.evcharge.mobile.data.dto.BookingStatus
+import com.evcharge.mobile.data.model.BookingStatus
+import com.evcharge.mobile.data.model.toBookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -56,10 +57,8 @@ class BookingListActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
+        prefs = Prefs.instance()
+        bookingRepository = BookingRepository()
         
         // Initialize UI components
         tabLayout = findViewById(R.id.tab_layout)
@@ -109,18 +108,18 @@ class BookingListActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading bookings...")
         
-        val ownerNic = prefs.getNIC()
+        val ownerNic = prefs.getNic()
         
         lifecycleScope.launch {
             try {
                 // Load upcoming bookings
-                val upcomingResult = bookingRepository.getUpcomingBookings(ownerNic)
+                val upcomingResult = bookingRepository.getUpcomingBookings(ownerNic ?: "")
                 if (upcomingResult.isSuccess()) {
                     upcomingBookings = upcomingResult.getDataOrNull() ?: emptyList()
                 }
                 
                 // Load history bookings
-                val historyResult = bookingRepository.getBookingHistory(ownerNic)
+                val historyResult = bookingRepository.getBookingHistory(ownerNic ?: "")
                 if (historyResult.isSuccess()) {
                     historyBookings = historyResult.getDataOrNull() ?: emptyList()
                 }
@@ -219,16 +218,17 @@ class BookingAdapter(
         
         fun bind(booking: Booking, onBookingClick: (Booking) -> Unit) {
             tvStationName.text = booking.stationName ?: "Unknown Station"
-            tvDateTime.text = formatDateTime(booking.startTime)
-            tvStatus.text = booking.status.name
+            tvDateTime.text = booking.startTime ?: "N/A"
+            tvStatus.text = booking.status
             tvDuration.text = formatDuration(booking.startTime, booking.endTime)
             
             // Set status color
-            val statusColor = when (booking.status) {
-                BookingStatus.PENDING -> R.color.status_pending
-                BookingStatus.APPROVED -> R.color.status_approved
-                BookingStatus.COMPLETED -> R.color.status_completed
-                BookingStatus.CANCELLED -> R.color.status_cancelled
+            val statusColor = when (booking.status.toBookingStatus()) {
+                BookingStatus.Pending -> R.color.status_pending
+                BookingStatus.Approved -> R.color.status_approved
+                BookingStatus.Completed -> R.color.status_completed
+                BookingStatus.Cancelled -> R.color.status_cancelled
+                BookingStatus.Unknown -> R.color.status_pending
             }
             tvStatus.setTextColor(itemView.context.getColor(statusColor))
             
@@ -242,8 +242,11 @@ class BookingAdapter(
             return sdf.format(java.util.Date(timestamp))
         }
         
-        private fun formatDuration(startTime: Long, endTime: Long): String {
-            val duration = endTime - startTime
+        private fun formatDuration(startTime: String?, endTime: String?): String {
+            if (startTime == null || endTime == null) return "N/A"
+            val start = com.evcharge.mobile.common.TimeExt.isoToMillisOrNull(startTime) ?: return "N/A"
+            val end = com.evcharge.mobile.common.TimeExt.isoToMillisOrNull(endTime) ?: return "N/A"
+            val duration = end - start
             val hours = duration / (1000 * 60 * 60)
             val minutes = (duration % (1000 * 60 * 60)) / (1000 * 60)
             return "${hours}h ${minutes}m"

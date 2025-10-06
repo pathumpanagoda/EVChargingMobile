@@ -1,234 +1,277 @@
 package com.evcharge.mobile.data.api
 
-import com.evcharge.mobile.common.Result
+import com.evcharge.mobile.common.AppResult
 import com.evcharge.mobile.data.dto.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
 import org.json.JSONObject
 
-/**
- * Booking API service
- */
-class BookingApi(private val apiClient: ApiClient) {
+class BookingApi(private val http: okhttp3.OkHttpClient = ApiClient.client()) {
+    private val json = "application/json; charset=utf-8".toMediaType()
     
-    /**
-     * Create a new booking
-     */
-    suspend fun createBooking(request: BookingCreateRequest): Result<Booking> {
+    suspend fun createBooking(request: BookingCreateRequest): AppResult<Booking> {
         return try {
             val body = JSONObject().apply {
                 put("stationId", request.stationId)
-                put("startTime", request.startTime)
-                put("endTime", request.endTime)
+                put("reservationDateTime", request.reservationDateTime)
             }
             
-            val response = apiClient.post("/api/booking", body)
+            val req = ApiClient.requestBuilder("/api/booking")
+                .post(RequestBody.create(json, body.toString()))
+                .addHeader("Accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .build()
             
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val booking = parseBooking(data)
-                    Result.Success(booking)
-                } else {
-                    Result.Error(Exception("Invalid response format"))
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
                 }
-            } else {
-                val message = response.optString("message", "Failed to create booking")
-                Result.Error(Exception(message))
-            }
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
-    }
-    
-    /**
-     * Get booking by ID
-     */
-    suspend fun getBooking(bookingId: String): Result<Booking> {
-        return try {
-            val response = apiClient.get("/api/booking/$bookingId")
-            
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val booking = parseBooking(data)
-                    Result.Success(booking)
-                } else {
-                    Result.Error(Exception("Invalid response format"))
-                }
-            } else {
-                val message = response.optString("message", "Failed to get booking")
-                Result.Error(Exception(message))
-            }
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
-    }
-    
-    /**
-     * Get bookings for owner
-     */
-    suspend fun getOwnerBookings(ownerNic: String, upcoming: Boolean? = null): Result<List<Booking>> {
-        return try {
-            var path = "/api/booking/owner/$ownerNic"
-            if (upcoming != null) {
-                path += "?upcoming=$upcoming"
-            }
-            
-            val response = apiClient.get(path)
-            
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONArray("data")
-                if (data != null) {
-                    val bookings = mutableListOf<Booking>()
-                    for (i in 0 until data.length()) {
-                        val bookingData = data.getJSONObject(i)
-                        val booking = parseBooking(bookingData)
-                        bookings.add(booking)
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val booking = parseBooking(data)
+                        AppResult.Ok(booking)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
                     }
-                    Result.Success(bookings)
                 } else {
-                    Result.Success(emptyList())
+                    val message = obj.optString("message", "Failed to create booking")
+                    AppResult.Err(Exception(message))
                 }
-            } else {
-                val message = response.optString("message", "Failed to get bookings")
-                Result.Error(Exception(message))
             }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
-    /**
-     * Update booking
-     */
-    suspend fun updateBooking(bookingId: String, request: BookingUpdateRequest): Result<Booking> {
+    suspend fun getBooking(bookingId: String): AppResult<Booking> {
+        return try {
+            val req = ApiClient.requestBuilder("/api/booking/$bookingId")
+                .get()
+                .addHeader("Accept", "application/json")
+                .build()
+            
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val booking = parseBooking(data)
+                        AppResult.Ok(booking)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to get booking")
+                    AppResult.Err(Exception(message))
+                }
+            }
+        } catch (e: Exception) {
+            AppResult.Err(e)
+        }
+    }
+    
+    suspend fun getOwnerBookings(ownerNic: String, upcoming: Boolean? = null): AppResult<List<Booking>> {
+        return try {
+            val url = if (upcoming != null) {
+                "/api/booking/owner/$ownerNic?upcoming=$upcoming"
+            } else {
+                "/api/booking/owner/$ownerNic"
+            }
+            
+            val req = ApiClient.requestBuilder(url)
+                .get()
+                .addHeader("Accept", "application/json")
+                .build()
+            
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONArray("data")
+                    if (data != null) {
+                        val bookings = mutableListOf<Booking>()
+                        for (i in 0 until data.length()) {
+                            val booking = parseBooking(data.getJSONObject(i))
+                            bookings.add(booking)
+                        }
+                        AppResult.Ok(bookings)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to get bookings")
+                    AppResult.Err(Exception(message))
+                }
+            }
+        } catch (e: Exception) {
+            AppResult.Err(e)
+        }
+    }
+    
+    suspend fun updateBooking(bookingId: String, request: BookingUpdateRequest): AppResult<Booking> {
         return try {
             val body = JSONObject().apply {
-                if (request.stationId != null) put("stationId", request.stationId)
-                if (request.startTime != null) put("startTime", request.startTime)
-                if (request.endTime != null) put("endTime", request.endTime)
+                request.status?.let { put("status", it) }
+                request.notes?.let { put("notes", it) }
             }
             
-            val response = apiClient.put("/api/booking/$bookingId", body)
+            val req = ApiClient.requestBuilder("/api/booking/$bookingId")
+                .put(RequestBody.create(json, body.toString()))
+                .addHeader("Accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .build()
             
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val booking = parseBooking(data)
-                    Result.Success(booking)
-                } else {
-                    Result.Error(Exception("Invalid response format"))
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
                 }
-            } else {
-                val message = response.optString("message", "Failed to update booking")
-                Result.Error(Exception(message))
-            }
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
-    }
-    
-    /**
-     * Cancel booking
-     */
-    suspend fun cancelBooking(bookingId: String): Result<Boolean> {
-        return try {
-            val response = apiClient.delete("/api/booking/$bookingId")
-            
-            if (response.optBoolean("success", false)) {
-                Result.Success(true)
-            } else {
-                val message = response.optString("message", "Failed to cancel booking")
-                Result.Error(Exception(message))
-            }
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
-    }
-    
-    /**
-     * Get dashboard stats for owner
-     */
-    suspend fun getDashboardStats(ownerNic: String): Result<DashboardStats> {
-        return try {
-            val response = apiClient.get("/api/booking/dashboard/$ownerNic")
-            
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                if (data != null) {
-                    val stats = DashboardStats(
-                        pendingCount = data.optInt("pendingCount", 0),
-                        approvedCount = data.optInt("approvedCount", 0),
-                        completedCount = data.optInt("completedCount", 0),
-                        cancelledCount = data.optInt("cancelledCount", 0)
-                    )
-                    Result.Success(stats)
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val booking = parseBooking(data)
+                        AppResult.Ok(booking)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
                 } else {
-                    Result.Success(DashboardStats())
+                    val message = obj.optString("message", "Failed to update booking")
+                    AppResult.Err(Exception(message))
                 }
-            } else {
-                val message = response.optString("message", "Failed to get dashboard stats")
-                Result.Error(Exception(message))
             }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
-    /**
-     * Complete booking (for operator)
-     */
-    suspend fun completeBooking(bookingId: String, qrCode: String): Result<BookingCompleteResponse> {
+    suspend fun cancelBooking(bookingId: String): AppResult<Boolean> {
+        return try {
+            val req = ApiClient.requestBuilder("/api/booking/$bookingId/cancel")
+                .delete()
+                .addHeader("Accept", "application/json")
+                .build()
+            
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    AppResult.Ok(true)
+                } else {
+                    val message = obj.optString("message", "Failed to cancel booking")
+                    AppResult.Err(Exception(message))
+                }
+            }
+        } catch (e: Exception) {
+            AppResult.Err(e)
+        }
+    }
+    
+    suspend fun getDashboardStats(ownerNic: String): AppResult<DashboardStats> {
+        return try {
+            val req = ApiClient.requestBuilder("/api/booking/stats/$ownerNic")
+                .get()
+                .addHeader("Accept", "application/json")
+                .build()
+            
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
+                
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val stats = DashboardStats(
+                            totalBookings = data.optInt("totalBookings", 0),
+                            pendingBookings = data.optInt("pendingBookings", 0),
+                            completedBookings = data.optInt("completedBookings", 0),
+                            cancelledBookings = data.optInt("cancelledBookings", 0)
+                        )
+                        AppResult.Ok(stats)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to get stats")
+                    AppResult.Err(Exception(message))
+                }
+            }
+        } catch (e: Exception) {
+            AppResult.Err(e)
+        }
+    }
+    
+    suspend fun completeBooking(bookingId: String, qrCode: String): AppResult<BookingCompleteResponse> {
         return try {
             val body = JSONObject().apply {
-                put("bookingId", bookingId)
                 put("qrCode", qrCode)
             }
             
-            val response = apiClient.post("/api/booking/complete", body)
+            val req = ApiClient.requestBuilder("/api/booking/$bookingId/complete")
+                .post(RequestBody.create(json, body.toString()))
+                .addHeader("Accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .build()
             
-            if (response.optBoolean("success", false)) {
-                val data = response.optJSONObject("data")
-                val booking = if (data != null) parseBooking(data) else null
+            http.newCall(req).execute().use { resp ->
+                val raw = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    return AppResult.Err(Exception(raw))
+                }
                 
-                val completeResponse = BookingCompleteResponse(
-                    success = true,
-                    message = response.optString("message", "Booking completed successfully"),
-                    data = booking
-                )
-                Result.Success(completeResponse)
-            } else {
-                val message = response.optString("message", "Failed to complete booking")
-                Result.Error(Exception(message))
+                val obj = JSONObject(raw)
+                if (obj.optBoolean("success", false)) {
+                    val data = obj.optJSONObject("data")
+                    if (data != null) {
+                        val response = BookingCompleteResponse(
+                            success = true,
+                            message = data.optString("message", "Booking completed"),
+                            booking = parseBooking(data.optJSONObject("booking"))
+                        )
+                        AppResult.Ok(response)
+                    } else {
+                        AppResult.Err(Exception("Invalid response format"))
+                    }
+                } else {
+                    val message = obj.optString("message", "Failed to complete booking")
+                    AppResult.Err(Exception(message))
+                }
             }
         } catch (e: Exception) {
-            Result.Error(e)
+            AppResult.Err(e)
         }
     }
     
-    /**
-     * Parse booking from JSON
-     */
     private fun parseBooking(data: JSONObject): Booking {
-        val statusString = data.optString("status", "PENDING")
-        val status = when (statusString.uppercase()) {
-            "PENDING" -> BookingStatus.PENDING
-            "APPROVED" -> BookingStatus.APPROVED
-            "COMPLETED" -> BookingStatus.COMPLETED
-            "CANCELLED" -> BookingStatus.CANCELLED
-            else -> BookingStatus.PENDING
-        }
-        
         return Booking(
-            id = data.optString("id"),
-            ownerNic = data.optString("ownerNic"),
-            stationId = data.optString("stationId"),
-            stationName = data.optString("stationName"),
-            startTime = data.optLong("startTime"),
-            endTime = data.optLong("endTime"),
-            status = status,
-            createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-            updatedAt = data.optLong("updatedAt", System.currentTimeMillis()),
-            qrCode = data.optString("qrCode")
+            id = data.optString("id", ""),
+            stationId = data.optString("stationId", ""),
+            ownerNic = data.optString("ownerNic", ""),
+            reservationDateTime = data.optString("reservationDateTime", ""),
+            status = data.optString("status", ""),
+            createdAt = data.optString("createdAt", ""),
+            updatedAt = data.optString("updatedAt", "")
         )
     }
 }

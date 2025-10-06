@@ -16,7 +16,8 @@ import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
 import com.evcharge.mobile.data.dto.Booking
-import com.evcharge.mobile.data.dto.BookingStatus
+import com.evcharge.mobile.data.model.BookingStatus
+import com.evcharge.mobile.data.model.toBookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.ui.qr.QrCodeActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
@@ -59,10 +60,8 @@ class BookingDetailActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
+        prefs = Prefs.instance()
+        bookingRepository = BookingRepository()
         
         // Get booking ID from intent
         bookingId = intent.getStringExtra("booking_id") ?: ""
@@ -145,18 +144,19 @@ class BookingDetailActivity : AppCompatActivity() {
         
         tvStationName.text = booking.stationName ?: "Unknown Station"
         tvAddress.text = "Station Address" // TODO: Get actual address
-        tvStartTime.text = Datex.formatToDisplay(booking.startTime)
-        tvEndTime.text = Datex.formatToDisplay(booking.endTime)
+        tvStartTime.text = booking.startTime ?: "N/A"
+        tvEndTime.text = booking.endTime ?: "N/A"
         tvDuration.text = formatDuration(booking.startTime, booking.endTime)
-        tvStatus.text = booking.status.name
-        tvCreatedAt.text = Datex.formatToDisplay(booking.createdAt)
+        tvStatus.text = booking.status
+        tvCreatedAt.text = booking.createdAt
         
         // Set status color
-        val statusColor = when (booking.status) {
-            BookingStatus.PENDING -> R.color.status_pending
-            BookingStatus.APPROVED -> R.color.status_approved
-            BookingStatus.COMPLETED -> R.color.status_completed
-            BookingStatus.CANCELLED -> R.color.status_cancelled
+        val statusColor = when (booking.status.toBookingStatus()) {
+            BookingStatus.Pending -> R.color.status_pending
+            BookingStatus.Approved -> R.color.status_approved
+            BookingStatus.Completed -> R.color.status_completed
+            BookingStatus.Cancelled -> R.color.status_cancelled
+            BookingStatus.Unknown -> R.color.status_pending
         }
         tvStatus.setTextColor(getColor(statusColor))
         
@@ -167,23 +167,28 @@ class BookingDetailActivity : AppCompatActivity() {
     private fun updateButtonVisibility() {
         val booking = this.booking ?: return
         
-        when (booking.status) {
-            BookingStatus.PENDING -> {
+        when (booking.status.toBookingStatus()) {
+            BookingStatus.Pending -> {
                 btnModify.visibility = android.view.View.VISIBLE
                 btnCancel.visibility = android.view.View.VISIBLE
                 btnShowQr.visibility = android.view.View.GONE
             }
-            BookingStatus.APPROVED -> {
+            BookingStatus.Approved -> {
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.VISIBLE
                 btnShowQr.visibility = android.view.View.VISIBLE
             }
-            BookingStatus.COMPLETED -> {
+            BookingStatus.Completed -> {
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.GONE
                 btnShowQr.visibility = android.view.View.GONE
             }
-            BookingStatus.CANCELLED -> {
+            BookingStatus.Cancelled -> {
+                btnModify.visibility = android.view.View.GONE
+                btnCancel.visibility = android.view.View.GONE
+                btnShowQr.visibility = android.view.View.GONE
+            }
+            BookingStatus.Unknown -> {
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.GONE
                 btnShowQr.visibility = android.view.View.GONE
@@ -191,8 +196,11 @@ class BookingDetailActivity : AppCompatActivity() {
         }
     }
     
-    private fun formatDuration(startTime: Long, endTime: Long): String {
-        val duration = endTime - startTime
+    private fun formatDuration(startTime: String?, endTime: String?): String {
+        if (startTime == null || endTime == null) return "N/A"
+        val start = com.evcharge.mobile.common.TimeExt.isoToMillisOrNull(startTime) ?: return "N/A"
+        val end = com.evcharge.mobile.common.TimeExt.isoToMillisOrNull(endTime) ?: return "N/A"
+        val duration = end - start
         val hours = duration / (1000 * 60 * 60)
         val minutes = (duration % (1000 * 60 * 60)) / (1000 * 60)
         return "${hours}h ${minutes}m"
