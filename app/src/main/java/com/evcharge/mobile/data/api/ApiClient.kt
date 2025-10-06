@@ -196,11 +196,25 @@ class ApiClient(private val prefs: Prefs) {
             val originalRequest = chain.request()
             val token = prefs.getToken()
             
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "AuthInterceptor - Token length: ${token.length}")
+                Log.d(TAG, "AuthInterceptor - Token preview: ${token.take(20)}...")
+            }
+            
             val newRequest = if (token.isNotEmpty()) {
-                originalRequest.newBuilder()
+                val requestWithAuth = originalRequest.newBuilder()
                     .addHeader("Authorization", "Bearer $token")
                     .build()
+                
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "AuthInterceptor - Added Authorization header")
+                }
+                
+                requestWithAuth
             } else {
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "AuthInterceptor - No token available")
+                }
                 originalRequest
             }
             

@@ -13,6 +13,7 @@ import com.evcharge.mobile.R
 import com.evcharge.mobile.common.Prefs
 import com.evcharge.mobile.common.Toasts
 import com.evcharge.mobile.common.getDataOrNull
+import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
@@ -141,26 +142,44 @@ class BookingListActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        android.util.Log.d("BookingListActivity", "Loading bookings for NIC: $ownerNic")
+        
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Load upcoming bookings
                 val upcomingResult = bookingRepository.getUpcomingBookings(ownerNic)
-                if (upcomingResult.isSuccess()) {
-                    upcomingBookings = upcomingResult.getDataOrNull() ?: emptyList()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (upcomingResult.isSuccess()) {
+                        upcomingBookings = upcomingResult.getDataOrNull() ?: emptyList()
+                        Toasts.showInfo(this@BookingListActivity, "Loaded ${upcomingBookings.size} upcoming bookings")
+                    } else {
+                        val error = upcomingResult.getErrorOrNull()
+                        Toasts.showWarning(this@BookingListActivity, "Failed to load upcoming: ${error?.message}")
+                    }
                 }
                 
                 // Load history bookings
                 val historyResult = bookingRepository.getBookingHistory(ownerNic)
-                if (historyResult.isSuccess()) {
-                    historyBookings = historyResult.getDataOrNull() ?: emptyList()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (historyResult.isSuccess()) {
+                        historyBookings = historyResult.getDataOrNull() ?: emptyList()
+                        Toasts.showInfo(this@BookingListActivity, "Loaded ${historyBookings.size} history bookings")
+                    } else {
+                        val error = historyResult.getErrorOrNull()
+                        Toasts.showWarning(this@BookingListActivity, "Failed to load history: ${error?.message}")
+                    }
+                    
+                    updateDisplay()
                 }
                 
-                updateDisplay()
-                
             } catch (e: Exception) {
-                Toasts.showError(this@BookingListActivity, "Failed to load bookings: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingListActivity, "Failed to load bookings: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
@@ -244,7 +263,7 @@ class BookingAdapter(
     class BookingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvStationName: MaterialTextView = itemView.findViewById(R.id.tv_station_name)
         private val tvDateTime: MaterialTextView = itemView.findViewById(R.id.tv_date_time)
-        private val tvStatus: MaterialTextView = itemView.findViewById(R.id.tv_status)
+        private val tvStatus: com.google.android.material.chip.Chip = itemView.findViewById(R.id.tv_status)
         private val tvDuration: MaterialTextView = itemView.findViewById(R.id.tv_duration)
         
         fun bind(booking: Booking, onBookingClick: (Booking) -> Unit) {

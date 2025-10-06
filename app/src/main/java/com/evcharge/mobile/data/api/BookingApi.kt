@@ -70,10 +70,19 @@ class BookingApi(private val apiClient: ApiClient) {
         return try {
             var path = "/api/booking/owner/$ownerNic"
             if (upcoming != null) {
-                path += "?upcoming=$upcoming"
+                // Backend expects includeHistory parameter
+                // upcoming=true means includeHistory=false (only future bookings)
+                // upcoming=false means includeHistory=true (all bookings including past)
+                val includeHistory = !upcoming
+                path += "?includeHistory=$includeHistory"
             }
             
+            android.util.Log.d("BookingApi", "Getting owner bookings - Path: $path, NIC: $ownerNic, Upcoming: $upcoming")
+            
             val response = apiClient.get(path)
+            
+            android.util.Log.d("BookingApi", "Response success: ${response.optBoolean("success", false)}")
+            android.util.Log.d("BookingApi", "Response message: ${response.optString("message", "N/A")}")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONArray("data")
@@ -84,15 +93,19 @@ class BookingApi(private val apiClient: ApiClient) {
                         val booking = parseBooking(bookingData)
                         bookings.add(booking)
                     }
+                    android.util.Log.d("BookingApi", "Successfully loaded ${bookings.size} bookings")
                     Result.Success(bookings)
                 } else {
+                    android.util.Log.d("BookingApi", "No data array in response, returning empty list")
                     Result.Success(emptyList())
                 }
             } else {
                 val message = response.optString("message", "Failed to get bookings")
+                android.util.Log.e("BookingApi", "API returned error: $message")
                 Result.Error(Exception(message))
             }
         } catch (e: Exception) {
+            android.util.Log.e("BookingApi", "Exception getting bookings: ${e.message}", e)
             Result.Error(e)
         }
     }

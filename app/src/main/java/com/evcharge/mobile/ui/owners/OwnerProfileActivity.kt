@@ -160,21 +160,55 @@ class OwnerProfileActivity : AppCompatActivity() {
                 
                 if (result.isSuccess()) {
                     ownerProfile = result.getDataOrNull()
+                    Toasts.showInfo(this@OwnerProfileActivity, "Profile loaded from server")
                 } else {
                     // Fallback to local database
+                    Toasts.showWarning(this@OwnerProfileActivity, "Server unavailable, loading from local storage")
                     ownerProfile = ownerRepository.getLocalOwner(ownerNic)
                 }
                 
                 if (ownerProfile != null) {
                     updateUI()
                 } else {
-                    Toasts.showError(this@OwnerProfileActivity, "Failed to load profile")
+                    // If no profile found anywhere, create a basic one from session data
+                    createBasicProfile(ownerNic)
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e.message}")
+                Toasts.showWarning(this@OwnerProfileActivity, "Backend error, trying local storage: ${e.message}")
+                try {
+                    // Try local database as fallback
+                    ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                    if (ownerProfile != null) {
+                        updateUI()
+                    } else {
+                        createBasicProfile(ownerNic)
+                    }
+                } catch (e2: Exception) {
+                    Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e2.message}")
+                    createBasicProfile(ownerNic)
+                }
             } finally {
                 loadingView.hide()
             }
+        }
+    }
+    
+    private fun createBasicProfile(ownerNic: String) {
+        try {
+            // Create a basic profile with default values
+            // Since we don't have name/email/phone in Prefs, we'll use defaults
+            ownerProfile = com.evcharge.mobile.data.dto.OwnerProfile(
+                nic = ownerNic,
+                name = "User", // Default name
+                email = "", // Empty email - user can fill it
+                phone = "", // Empty phone - user can fill it
+                active = true
+            )
+            
+            updateUI()
+            Toasts.showInfo(this, "Profile loaded with default values. Please update your information.")
+        } catch (e: Exception) {
+            Toasts.showError(this, "Failed to create basic profile: ${e.message}")
         }
     }
     

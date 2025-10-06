@@ -30,7 +30,7 @@ class AuthApi(private val apiClient: ApiClient) {
                     val loginResponse = LoginResponse(
                         token = data.optString("token"),
                         role = data.optString("role"),
-                        nic = data.optString("nic"),
+                        nic = data.optString("userId"), // Backend returns 'userId' not 'nic'
                         message = data.optString("message")
                     )
                     Result.Success(loginResponse)
