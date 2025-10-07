@@ -21,13 +21,13 @@ class OwnerApi(private val apiClient: ApiClient) {
                 val data = response.optJSONObject("data")
                 if (data != null) {
                     val owner = OwnerProfile(
-                        nic = data.optString("nic"),
-                        name = data.optString("name"),
-                        email = data.optString("email"),
-                        phone = data.optString("phone"),
-                        active = data.optBoolean("active", true),
-                        createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-                        updatedAt = data.optLong("updatedAt", System.currentTimeMillis())
+                        nic = data.optString("NIC"),  // Backend returns NIC (capital)
+                        name = data.optString("Name"),  // Backend returns Name (capital)
+                        email = data.optString("Email"),  // Backend returns Email (capital)
+                        phone = data.optString("Phone"),  // Backend returns Phone (capital)
+                        active = data.optBoolean("IsActive", true),  // Backend returns IsActive (capital)
+                        createdAt = data.optLong("CreatedAt", System.currentTimeMillis()),  // Backend returns CreatedAt (capital)
+                        updatedAt = data.optLong("UpdatedAt", System.currentTimeMillis())  // Backend returns UpdatedAt (capital)
                     )
                     Result.Success(owner)
                 } else {
@@ -48,9 +48,11 @@ class OwnerApi(private val apiClient: ApiClient) {
     suspend fun updateOwner(nic: String, request: OwnerUpdateRequest): Result<OwnerProfile> {
         return try {
             val body = JSONObject().apply {
-                put("name", request.name)
-                put("email", request.email)
-                put("phone", request.phone)
+                put("NIC", nic)  // Backend expects NIC field
+                put("Name", request.name)  // Backend expects Name (capital N)
+                put("Email", request.email)  // Backend expects Email (capital E)
+                put("Phone", request.phone)  // Backend expects Phone (capital P)
+                // Password is optional for updates, so we don't include it
             }
             
             val response = apiClient.put("/api/evowner/$nic", body)
@@ -59,13 +61,13 @@ class OwnerApi(private val apiClient: ApiClient) {
                 val data = response.optJSONObject("data")
                 if (data != null) {
                     val owner = OwnerProfile(
-                        nic = data.optString("nic"),
-                        name = data.optString("name"),
-                        email = data.optString("email"),
-                        phone = data.optString("phone"),
-                        active = data.optBoolean("active", true),
-                        createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-                        updatedAt = data.optLong("updatedAt", System.currentTimeMillis())
+                        nic = data.optString("NIC"),  // Backend returns NIC (capital)
+                        name = data.optString("Name"),  // Backend returns Name (capital)
+                        email = data.optString("Email"),  // Backend returns Email (capital)
+                        phone = data.optString("Phone"),  // Backend returns Phone (capital)
+                        active = data.optBoolean("IsActive", true),  // Backend returns IsActive (capital)
+                        createdAt = data.optLong("CreatedAt", System.currentTimeMillis()),  // Backend returns CreatedAt (capital)
+                        updatedAt = data.optLong("UpdatedAt", System.currentTimeMillis())  // Backend returns UpdatedAt (capital)
                     )
                     Result.Success(owner)
                 } else {

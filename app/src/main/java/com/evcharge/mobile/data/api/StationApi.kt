@@ -14,26 +14,44 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getAllStations(): Result<List<Station>> {
         return try {
-            val response = apiClient.get("/api/chargingstation")
+            // Get all stations with a large page size to get all results
+            val response = apiClient.get("/api/chargingstation?page=1&pageSize=100")
+            
+            android.util.Log.d("StationApi", "Response: $response")
             
             if (response.optBoolean("success", false)) {
-                val data = response.optJSONArray("data")
+                val data = response.optJSONObject("data")
+                android.util.Log.d("StationApi", "Data object: $data")
+                
                 if (data != null) {
-                    val stations = mutableListOf<Station>()
-                    for (i in 0 until data.length()) {
-                        val stationData = data.getJSONObject(i)
-                        val station = parseStation(stationData)
-                        stations.add(station)
+                    val items = data.optJSONArray("items")
+                    android.util.Log.d("StationApi", "Items array length: ${items?.length() ?: 0}")
+                    
+                    if (items != null) {
+                        val stations = mutableListOf<Station>()
+                        for (i in 0 until items.length()) {
+                            val stationData = items.getJSONObject(i)
+                            android.util.Log.d("StationApi", "Station $i: $stationData")
+                            val station = parseStation(stationData)
+                            stations.add(station)
+                        }
+                        android.util.Log.d("StationApi", "Parsed ${stations.size} stations")
+                        Result.Success(stations)
+                    } else {
+                        android.util.Log.w("StationApi", "No items array in paginated response")
+                        Result.Success(emptyList())
                     }
-                    Result.Success(stations)
                 } else {
+                    android.util.Log.w("StationApi", "No data object in response")
                     Result.Success(emptyList())
                 }
             } else {
                 val message = response.optString("message", "Failed to get stations")
+                android.util.Log.e("StationApi", "API error: $message")
                 Result.Error(Exception(message))
             }
         } catch (e: Exception) {
+            android.util.Log.e("StationApi", "Exception: ${e.message}", e)
             Result.Error(e)
         }
     }

@@ -139,18 +139,25 @@ class BookingFormActivity : AppCompatActivity() {
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                android.util.Log.d("BookingFormActivity", "Loading stations...")
                 val result = stationRepository.getAvailableStations()
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (result.isSuccess()) {
                         stations = result.getDataOrNull() ?: emptyList()
+                        android.util.Log.d("BookingFormActivity", "Loaded ${stations.size} stations")
+                        stations.forEach { station ->
+                            android.util.Log.d("BookingFormActivity", "Station: ${station.name} (${station.id}) - Status: ${station.status}")
+                        }
                         setupStationSpinner()
                     } else {
                         val error = result.getErrorOrNull()
+                        android.util.Log.e("BookingFormActivity", "Failed to load stations: ${error?.message}")
                         Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("BookingFormActivity", "Exception loading stations: ${e.message}", e)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toasts.showError(this@BookingFormActivity, "Failed to load stations: ${e.message}")
                 }
@@ -163,12 +170,18 @@ class BookingFormActivity : AppCompatActivity() {
     }
     
     private fun setupStationSpinner() {
+        android.util.Log.d("BookingFormActivity", "Setting up spinner with ${stations.size} stations")
+        
         val stationNames = mutableListOf("Select a station")
         stationNames.addAll(stations.map { it.name })
+        
+        android.util.Log.d("BookingFormActivity", "Station names: $stationNames")
         
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, stationNames)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerStation.adapter = adapter
+        
+        android.util.Log.d("BookingFormActivity", "Spinner adapter set with ${adapter.count} items")
     }
     
     private fun showStartDatePicker() {

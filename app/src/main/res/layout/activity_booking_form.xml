@@ -40,7 +40,8 @@
                     <Spinner
                         android:id="@+id/spinner_station"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="48dp"
+                        android:minHeight="48dp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -169,13 +170,13 @@
             android:layout_height="56dp"
             android:text="@string/create_booking" />
 
-    </LinearLayout>
+        <!-- Loading View -->
+        <com.evcharge.mobile.ui.widgets.LoadingView
+            android:id="@+id/loading_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-    <!-- Loading View -->
-    <com.evcharge.mobile.ui.widgets.LoadingView
-        android:id="@+id/loading_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
+    </LinearLayout>
 
 </ScrollView>
