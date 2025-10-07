@@ -17,27 +17,40 @@ class OwnerApi(private val apiClient: ApiClient) {
         return try {
             val response = apiClient.get("/api/evowner/$nic")
             
+            android.util.Log.d("OwnerApi", "Response: $response")
+            
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
+                android.util.Log.d("OwnerApi", "Data object: $data")
+                
                 if (data != null) {
+                    // Log all available keys to debug the response format
+                    val keys = data.keys()
+                    android.util.Log.d("OwnerApi", "Available keys in response: ${keys.asSequence().toList()}")
+                    
+                    // Parse fields using lowercase field names (backend format)
                     val owner = OwnerProfile(
-                        nic = data.optString("NIC"),  // Backend returns NIC (capital)
-                        name = data.optString("Name"),  // Backend returns Name (capital)
-                        email = data.optString("Email"),  // Backend returns Email (capital)
-                        phone = data.optString("Phone"),  // Backend returns Phone (capital)
-                        active = data.optBoolean("IsActive", true),  // Backend returns IsActive (capital)
-                        createdAt = data.optLong("CreatedAt", System.currentTimeMillis()),  // Backend returns CreatedAt (capital)
-                        updatedAt = data.optLong("UpdatedAt", System.currentTimeMillis())  // Backend returns UpdatedAt (capital)
+                        nic = data.optString("nic", ""),  // Backend uses lowercase
+                        name = data.optString("name", ""),  // Backend uses lowercase
+                        email = data.optString("email", ""),  // Backend uses lowercase
+                        phone = data.optString("phone", ""),  // Backend uses lowercase
+                        active = data.optBoolean("isActive", true),  // Backend uses lowercase
+                        createdAt = parseIso8601(data.optString("createdAt", "")) ?: System.currentTimeMillis(),  // Parse ISO 8601 date
+                        updatedAt = parseIso8601(data.optString("updatedAt", "")) ?: System.currentTimeMillis()  // Parse ISO 8601 date
                     )
+                    android.util.Log.d("OwnerApi", "Parsed owner: $owner")
                     Result.Success(owner)
                 } else {
+                    android.util.Log.w("OwnerApi", "No data object in response")
                     Result.Error(Exception("Invalid response format"))
                 }
             } else {
                 val message = response.optString("message", "Failed to get owner profile")
+                android.util.Log.e("OwnerApi", "API error: $message")
                 Result.Error(Exception(message))
             }
         } catch (e: Exception) {
+            android.util.Log.e("OwnerApi", "Exception: ${e.message}", e)
             Result.Error(e)
         }
     }
@@ -60,14 +73,15 @@ class OwnerApi(private val apiClient: ApiClient) {
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
                 if (data != null) {
+                    // Parse fields using lowercase field names (backend format)
                     val owner = OwnerProfile(
-                        nic = data.optString("NIC"),  // Backend returns NIC (capital)
-                        name = data.optString("Name"),  // Backend returns Name (capital)
-                        email = data.optString("Email"),  // Backend returns Email (capital)
-                        phone = data.optString("Phone"),  // Backend returns Phone (capital)
-                        active = data.optBoolean("IsActive", true),  // Backend returns IsActive (capital)
-                        createdAt = data.optLong("CreatedAt", System.currentTimeMillis()),  // Backend returns CreatedAt (capital)
-                        updatedAt = data.optLong("UpdatedAt", System.currentTimeMillis())  // Backend returns UpdatedAt (capital)
+                        nic = data.optString("nic", ""),  // Backend uses lowercase
+                        name = data.optString("name", ""),  // Backend uses lowercase
+                        email = data.optString("email", ""),  // Backend uses lowercase
+                        phone = data.optString("phone", ""),  // Backend uses lowercase
+                        active = data.optBoolean("isActive", true),  // Backend uses lowercase
+                        createdAt = parseIso8601(data.optString("createdAt", "")) ?: System.currentTimeMillis(),  // Parse ISO 8601 date
+                        updatedAt = parseIso8601(data.optString("updatedAt", "")) ?: System.currentTimeMillis()  // Parse ISO 8601 date
                     )
                     Result.Success(owner)
                 } else {
@@ -79,6 +93,21 @@ class OwnerApi(private val apiClient: ApiClient) {
             }
         } catch (e: Exception) {
             Result.Error(e)
+        }
+    }
+    
+    /**
+     * Parse ISO 8601 date string to timestamp
+     */
+    private fun parseIso8601(dateString: String): Long? {
+        return try {
+            if (dateString.isEmpty()) return null
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault())
+            format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            format.parse(dateString)?.time
+        } catch (e: Exception) {
+            android.util.Log.w("OwnerApi", "Failed to parse date: $dateString", e)
+            null
         }
     }
     

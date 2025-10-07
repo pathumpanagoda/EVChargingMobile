@@ -124,8 +124,16 @@ class BookingFormActivity : AppCompatActivity() {
         // Date and time pickers
         etStartDate.setOnClickListener { showStartDatePicker() }
         etStartTime.setOnClickListener { showStartTimePicker() }
-        etEndDate.setOnClickListener { showEndDatePicker() }
-        etEndTime.setOnClickListener { showEndTimePicker() }
+        
+        // End date/time are auto-calculated, so disable them
+        etEndDate.isEnabled = false
+        etEndTime.isEnabled = false
+        etEndDate.setOnClickListener { 
+            Toasts.showInfo(this, "End time is automatically set to 2 hours after start time")
+        }
+        etEndTime.setOnClickListener { 
+            Toasts.showInfo(this, "End time is automatically set to 2 hours after start time")
+        }
         
         // Create button
         btnCreate.setOnClickListener {
@@ -188,7 +196,18 @@ class BookingFormActivity : AppCompatActivity() {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = startDateTime
         
-        DatePickerDialog(
+        // Set minimum date to today
+        val minDate = Calendar.getInstance()
+        minDate.set(Calendar.HOUR_OF_DAY, 0)
+        minDate.set(Calendar.MINUTE, 0)
+        minDate.set(Calendar.SECOND, 0)
+        minDate.set(Calendar.MILLISECOND, 0)
+        
+        // Set maximum date to 7 days from now
+        val maxDate = Calendar.getInstance()
+        maxDate.add(Calendar.DAY_OF_MONTH, 7)
+        
+        val datePicker = DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
@@ -196,12 +215,21 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
                 newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
                 startDateTime = newCalendar.timeInMillis
+                
+                // Auto-adjust end time to be 2 hours after start time
+                endDateTime = startDateTime + (2 * 60 * 60 * 1000) // 2 hours
+                
                 updateDateTimeFields()
+                validateDateTimeSelection()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        )
+        
+        datePicker.datePicker.minDate = minDate.timeInMillis
+        datePicker.datePicker.maxDate = maxDate.timeInMillis
+        datePicker.show()
     }
     
     private fun showStartTimePicker() {
@@ -216,7 +244,12 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                 newCalendar.set(Calendar.MINUTE, minute)
                 startDateTime = newCalendar.timeInMillis
+                
+                // Auto-adjust end time to be 2 hours after start time
+                endDateTime = startDateTime + (2 * 60 * 60 * 1000) // 2 hours
+                
                 updateDateTimeFields()
+                validateDateTimeSelection()
             },
             calendar.get(Calendar.HOUR_OF_DAY),
             calendar.get(Calendar.MINUTE),
@@ -280,6 +313,27 @@ class BookingFormActivity : AppCompatActivity() {
         etEndTime.setText(timeFormat.format(endCalendar.time))
     }
     
+    private fun validateDateTimeSelection() {
+        val now = System.currentTimeMillis()
+        val sevenDaysFromNow = now + (7 * 24 * 60 * 60 * 1000)
+        
+        // Check if start time is in the future
+        if (startDateTime <= now) {
+            Toasts.showWarning(this, "Please select a future time")
+            return
+        }
+        
+        // Check 7-day rule
+        if (startDateTime > sevenDaysFromNow) {
+            Toasts.showWarning(this, "Reservation must be within 7 days")
+            return
+        }
+        
+        // Show success message if validation passes
+        val durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60)
+        Toasts.showSuccess(this, "Booking duration: ${durationHours}h (${Datex.formatToDisplay(startDateTime)} - ${Datex.formatToDisplay(endDateTime)})")
+    }
+    
     private fun createBooking() {
         // Validate input
         if (selectedStationId.isEmpty()) {
@@ -287,13 +341,32 @@ class BookingFormActivity : AppCompatActivity() {
             return
         }
         
-        if (!Validators.isValidBookingDuration(startDateTime, endDateTime)) {
-            Toasts.showValidationError(this, Validators.getBookingDurationErrorMessage())
+        // Validate date/time according to backend business rules
+        val now = System.currentTimeMillis()
+        val sevenDaysFromNow = now + (7 * 24 * 60 * 60 * 1000) // 7 days in milliseconds
+        
+        // Check if start time is in the future
+        if (startDateTime <= now) {
+            Toasts.showValidationError(this, "Reservation time must be in the future")
             return
         }
         
-        if (!Validators.canCreateBooking(startDateTime)) {
-            Toasts.showValidationError(this, Validators.getBookingCreationErrorMessage())
+        // Check 7-day rule
+        if (startDateTime > sevenDaysFromNow) {
+            Toasts.showValidationError(this, "Reservation must be within 7 days from booking date")
+            return
+        }
+        
+        // Check if end time is after start time
+        if (endDateTime <= startDateTime) {
+            Toasts.showValidationError(this, "End time must be after start time")
+            return
+        }
+        
+        // Check booking duration (max 2 hours as per backend logic)
+        val durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60)
+        if (durationHours > 2) {
+            Toasts.showValidationError(this, "Booking duration cannot exceed 2 hours")
             return
         }
         
@@ -304,6 +377,7 @@ class BookingFormActivity : AppCompatActivity() {
     private fun showBookingSummary() {
         val selectedStation = stations.find { it.id == selectedStationId }
         val stationName = selectedStation?.name ?: "Unknown Station"
+        val stationAddress = selectedStation?.address ?: "Address not available"
         
         val startTimeStr = Datex.formatToDisplay(startDateTime)
         val endTimeStr = Datex.formatToDisplay(endDateTime)
@@ -311,15 +385,16 @@ class BookingFormActivity : AppCompatActivity() {
         
         val message = """
             Station: $stationName
-            Start: $startTimeStr
-            End: $endTimeStr
-            Duration: ${duration}h
+            Address: $stationAddress
+            Date & Time: $startTimeStr
+            Duration: ${duration} hours
             
-            ${Validators.getBookingCreationErrorMessage()}
+            This booking will be created for the selected time slot.
+            You will receive a QR code for charging station access.
         """.trimIndent()
         
         AlertDialog.Builder(this)
-            .setTitle("Booking Summary")
+            .setTitle("Confirm Booking")
             .setMessage(message)
             .setPositiveButton("Create Booking") { _, _ ->
                 submitBooking()
@@ -332,7 +407,12 @@ class BookingFormActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Creating booking...")
         
-        val request = BookingCreateRequest(selectedStationId, startDateTime, endDateTime)
+        // Convert startDateTime to ISO 8601 format for backend
+        val iso8601Format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault())
+        iso8601Format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val reservationDateTime = iso8601Format.format(java.util.Date(startDateTime))
+        
+        val request = BookingCreateRequest(selectedStationId, reservationDateTime)
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {

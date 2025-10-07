@@ -31,12 +31,11 @@ data class Booking(
 )
 
 /**
- * Booking create request DTO
+ * Booking create request DTO - matches backend BookingRequest
  */
 data class BookingCreateRequest(
     val stationId: String,
-    val startTime: Long,
-    val endTime: Long
+    val reservationDateTime: String  // ISO 8601 format for backend
 )
 
 /**

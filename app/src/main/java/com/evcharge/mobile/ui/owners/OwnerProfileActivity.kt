@@ -110,27 +110,51 @@ class OwnerProfileActivity : AppCompatActivity() {
         loadingView.setMessage("Loading profile...")
         
         val ownerNic = prefs.getNIC()
+        android.util.Log.d("OwnerProfileActivity", "Loading profile for NIC: $ownerNic")
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Try to get from server first
+                android.util.Log.d("OwnerProfileActivity", "Calling ownerRepository.getOwner...")
                 val result = ownerRepository.getOwner(ownerNic)
                 
-                if (result.isSuccess()) {
-                    ownerProfile = result.getDataOrNull()
-                } else {
-                    // Fallback to local database
-                    ownerProfile = ownerRepository.getLocalOwner(ownerNic)
-                }
-                
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (ownerProfile != null) {
-                        updateUI()
+                    if (result.isSuccess()) {
+                        val profile = result.getDataOrNull()
+                        ownerProfile = profile
+                        android.util.Log.d("OwnerProfileActivity", "Profile loaded from server: $profile")
+                        
+                        if (profile != null) {
+                            // Check if we have valid data
+                            if (profile.nic.isNotEmpty() || profile.name.isNotEmpty() || profile.email.isNotEmpty()) {
+                                android.util.Log.d("OwnerProfileActivity", "Profile has valid data, updating UI")
+                                updateUI()
+                            } else {
+                                android.util.Log.w("OwnerProfileActivity", "Profile data is empty - all fields are empty")
+                                Toasts.showError(this@OwnerProfileActivity, "Profile data is empty - all fields are empty")
+                            }
+                        } else {
+                            android.util.Log.w("OwnerProfileActivity", "Profile is null from server")
+                            Toasts.showError(this@OwnerProfileActivity, "Profile data is null")
+                        }
                     } else {
-                        Toasts.showError(this@OwnerProfileActivity, "Failed to load profile")
+                        val error = result.getErrorOrNull()
+                        android.util.Log.e("OwnerProfileActivity", "Server error: ${error?.message}")
+                        
+                        // Fallback to local database
+                        android.util.Log.d("OwnerProfileActivity", "Falling back to local database...")
+                        ownerProfile = ownerRepository.getLocalOwner(ownerNic)
+                        android.util.Log.d("OwnerProfileActivity", "Local profile: $ownerProfile")
+                        
+                        if (ownerProfile != null) {
+                            updateUI()
+                        } else {
+                            Toasts.showError(this@OwnerProfileActivity, "Failed to load profile from server and local database")
+                        }
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("OwnerProfileActivity", "Exception loading profile: ${e.message}", e)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e.message}")
                 }
@@ -145,10 +169,14 @@ class OwnerProfileActivity : AppCompatActivity() {
     private fun updateUI() {
         val profile = ownerProfile ?: return
         
+        android.util.Log.d("OwnerProfileActivity", "Updating UI with profile: $profile")
+        
         etNic.setText(profile.nic)
         etName.setText(profile.name)
         etEmail.setText(profile.email)
         etPhone.setText(profile.phone)
+        
+        android.util.Log.d("OwnerProfileActivity", "UI updated - NIC: ${profile.nic}, Name: ${profile.name}, Email: ${profile.email}, Phone: ${profile.phone}")
         
         updateButtonStates()
     }

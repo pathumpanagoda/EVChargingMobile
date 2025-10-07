@@ -15,9 +15,8 @@ class BookingApi(private val apiClient: ApiClient) {
     suspend fun createBooking(request: BookingCreateRequest): Result<Booking> {
         return try {
             val body = JSONObject().apply {
-                put("stationId", request.stationId)
-                put("startTime", request.startTime)
-                put("endTime", request.endTime)
+                put("StationId", request.stationId)  // Backend expects StationId (capital S)
+                put("ReservationDateTime", request.reservationDateTime)  // Backend expects ReservationDateTime (capital R)
             }
             
             val response = apiClient.post("/api/booking", body)
