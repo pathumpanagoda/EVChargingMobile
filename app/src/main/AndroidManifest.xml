@@ -65,7 +65,8 @@
 
         <activity
             android:name=".ui.bookings.BookingFormActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
 
         <activity
             android:name=".ui.bookings.BookingDetailActivity"
@@ -77,11 +78,13 @@
 
         <activity
             android:name=".ui.qr.QrCodeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
 
         <activity
             android:name=".ui.qr.QrScanActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
 
     </application>
 

@@ -128,17 +128,7 @@ class BookingFormActivity : AppCompatActivity() {
     
     private fun setupClickListeners() {
         try {
-            // Station selection
-            etStation.setOnItemClickListener { _, _, position, _ ->
-                try {
-                    if (position < stations.size) {
-                        selectedStationId = stations[position].id
-                        etStation.setText(stations[position].name, false)
-                    }
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Station selection failed: ${e.message}")
-                }
-            }
+            // Station selection is now handled in setupStationSpinner()
             
             // Date and time pickers
             etStartDate.setOnClickListener { 
@@ -191,12 +181,18 @@ class BookingFormActivity : AppCompatActivity() {
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val result = stationRepository.getAvailableStations()
+                // Changed to getAllStations() to show all stations regardless of status
+                val result = stationRepository.getAllStations()
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (result.isSuccess()) {
                         stations = result.getDataOrNull() ?: emptyList()
-                        setupStationSpinner()
+                        if (stations.isEmpty()) {
+                            Toasts.showWarning(this@BookingFormActivity, "No stations available")
+                        } else {
+                            setupStationSpinner()
+                            Toasts.showInfo(this@BookingFormActivity, "Loaded ${stations.size} stations")
+                        }
                     } else {
                         val error = result.getErrorOrNull()
                         Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
@@ -215,10 +211,49 @@ class BookingFormActivity : AppCompatActivity() {
     }
     
     private fun setupStationSpinner() {
-        val stationNames = stations.map { it.name }
-        
-        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line, stationNames)
+        // Use custom adapter for better station display
+        val adapter = StationAdapter(this, stations)
         etStation.setAdapter(adapter)
+        
+        // Enable filtering/searching
+        etStation.threshold = 1
+        
+        // Show the dropdown on click
+        etStation.setOnClickListener { 
+            etStation.showDropDown() 
+        }
+        
+        // Handle text input for filtering
+        etStation.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                etStation.showDropDown()
+            }
+        }
+        
+        // Override toString to display station name only
+        etStation.setOnItemClickListener { _, _, position, _ ->
+            try {
+                if (position < stations.size) {
+                    selectedStationId = stations[position].id
+                    val selectedStation = stations[position]
+                    
+                    // Set only the station name in the text field
+                    etStation.setText(selectedStation.name, false)
+                    
+                    // Show station details
+                    val statusText = when (selectedStation.status) {
+                        com.evcharge.mobile.data.dto.StationStatus.AVAILABLE -> "Available"
+                        com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> "Occupied"
+                        com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Under Maintenance"
+                        com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> "Offline"
+                    }
+                    
+                    Toasts.showInfo(this, "Selected: ${selectedStation.name} ($statusText)")
+                }
+            } catch (e: Exception) {
+                Toasts.showError(this, "Station selection failed: ${e.message}")
+            }
+        }
     }
     
     private fun showStartDatePicker() {
@@ -371,29 +406,35 @@ class BookingFormActivity : AppCompatActivity() {
         
         val request = BookingCreateRequest(selectedStationId, startDateTime, endDateTime)
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = bookingRepository.createBooking(request)
                 
-                if (result.isSuccess()) {
-                    val booking = result.getDataOrNull()
-                    if (booking != null) {
-                        Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
-                        
-                        // Open booking detail
-                        val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
-                        intent.putExtra("booking_id", booking.id)
-                        startActivity(intent)
-                        finish()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val booking = result.getDataOrNull()
+                        if (booking != null) {
+                            Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
+                            
+                            // Open booking detail
+                            val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
+                            intent.putExtra("booking_id", booking.id)
+                            startActivity(intent)
+                            finish()
+                        }
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
                     }
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

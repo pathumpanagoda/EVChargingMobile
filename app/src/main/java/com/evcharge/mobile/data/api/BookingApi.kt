@@ -14,10 +14,14 @@ class BookingApi(private val apiClient: ApiClient) {
      */
     suspend fun createBooking(request: BookingCreateRequest): Result<Booking> {
         return try {
+            // Convert Unix timestamp to ISO 8601 format for backend
+            val startDateTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
+                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                .format(java.util.Date(request.startTime))
+            
             val body = JSONObject().apply {
                 put("stationId", request.stationId)
-                put("startTime", request.startTime)
-                put("endTime", request.endTime)
+                put("reservationDateTime", startDateTime)
             }
             
             val response = apiClient.post("/api/booking", body)

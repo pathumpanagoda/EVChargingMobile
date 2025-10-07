@@ -14,14 +14,17 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getAllStations(): Result<List<Station>> {
         return try {
-            val response = apiClient.get("/api/station")
+            // Backend returns paginated response, request large page size to get all
+            val response = apiClient.get("/api/ChargingStation?page=1&pageSize=100")
             
             if (response.optBoolean("success", false)) {
-                val data = response.optJSONArray("data")
-                if (data != null) {
+                val data = response.optJSONObject("data")
+                val items = data?.optJSONArray("items")
+                
+                if (items != null) {
                     val stations = mutableListOf<Station>()
-                    for (i in 0 until data.length()) {
-                        val stationData = data.getJSONObject(i)
+                    for (i in 0 until items.length()) {
+                        val stationData = items.getJSONObject(i)
                         val station = parseStation(stationData)
                         stations.add(station)
                     }
@@ -43,7 +46,7 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getStation(stationId: String): Result<Station> {
         return try {
-            val response = apiClient.get("/api/station/$stationId")
+            val response = apiClient.get("/api/ChargingStation/$stationId")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
@@ -67,7 +70,7 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getNearbyStations(latitude: Double, longitude: Double, radius: Double = 10.0): Result<List<Station>> {
         return try {
-            val response = apiClient.get("/api/station/nearby?lat=$latitude&lng=$longitude&radius=$radius")
+            val response = apiClient.get("/api/ChargingStation/nearby?latitude=$latitude&longitude=$longitude&maxDistanceKm=$radius&limit=50")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONArray("data")
@@ -102,7 +105,7 @@ class StationApi(private val apiClient: ApiClient) {
                 put("endTime", endTime)
             }
             
-            val response = apiClient.post("/api/station/availability", body)
+            val response = apiClient.post("/api/ChargingStation/availability", body)
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
@@ -138,15 +141,26 @@ class StationApi(private val apiClient: ApiClient) {
      * Parse station from JSON
      */
     private fun parseStation(data: JSONObject): Station {
-        val statusString = data.optString("status", "AVAILABLE")
-        val status = when (statusString.uppercase()) {
-            "AVAILABLE" -> StationStatus.AVAILABLE
-            "OCCUPIED" -> StationStatus.OCCUPIED
-            "MAINTENANCE" -> StationStatus.MAINTENANCE
-            "OFFLINE" -> StationStatus.OFFLINE
+        // Parse location (nested in backend model)
+        val locationData = data.optJSONObject("location")
+        val address = locationData?.optString("address") ?: ""
+        val latitude = locationData?.optDouble("latitude") ?: 0.0
+        val longitude = locationData?.optDouble("longitude") ?: 0.0
+        
+        // Parse station capacity and determine status
+        val totalSlots = data.optInt("totalSlots", 1)
+        val availableSlots = data.optInt("availableSlots", 1)
+        val isActive = data.optBoolean("isActive", true)
+        
+        // Determine status based on availability and active state
+        val status = when {
+            !isActive -> StationStatus.OFFLINE
+            availableSlots == 0 -> StationStatus.OCCUPIED
+            availableSlots < totalSlots -> StationStatus.OCCUPIED
             else -> StationStatus.AVAILABLE
         }
         
+        // Parse amenities (if available)
         val amenities = mutableListOf<String>()
         val amenitiesData = data.optJSONArray("amenities")
         if (amenitiesData != null) {
@@ -155,16 +169,23 @@ class StationApi(private val apiClient: ApiClient) {
             }
         }
         
+        // Add station type as an amenity
+        val stationType = data.optString("type", "AC")
+        if (stationType.isNotEmpty()) {
+            amenities.add("Type: $stationType")
+        }
+        
+        // Parse schedule (simplified from backend DailySchedule)
         val schedule = mutableListOf<StationScheduleItem>()
         val scheduleData = data.optJSONArray("schedule")
         if (scheduleData != null) {
             for (i in 0 until scheduleData.length()) {
                 val scheduleItemData = scheduleData.getJSONObject(i)
                 val scheduleItem = StationScheduleItem(
-                    dayOfWeek = scheduleItemData.optInt("dayOfWeek", 1),
-                    startTime = scheduleItemData.optString("startTime", "00:00"),
-                    endTime = scheduleItemData.optString("endTime", "23:59"),
-                    isAvailable = scheduleItemData.optBoolean("isAvailable", true)
+                    dayOfWeek = i + 1, // Use index as day of week
+                    startTime = scheduleItemData.optString("open", "00:00"),
+                    endTime = scheduleItemData.optString("close", "23:59"),
+                    isAvailable = scheduleItemData.optInt("slotsAvailable", 0) > 0
                 )
                 schedule.add(scheduleItem)
             }
@@ -172,15 +193,15 @@ class StationApi(private val apiClient: ApiClient) {
         
         return Station(
             id = data.optString("id"),
-            name = data.optString("name"),
-            address = data.optString("address"),
-            latitude = data.optDouble("latitude", 0.0),
-            longitude = data.optDouble("longitude", 0.0),
+            name = data.optString("name", "Unknown Station"),
+            address = address,
+            latitude = latitude,
+            longitude = longitude,
             status = status,
-            maxCapacity = data.optInt("maxCapacity", 1),
-            currentOccupancy = data.optInt("currentOccupancy", 0),
-            chargingRate = data.optDouble("chargingRate", 0.0),
-            pricePerHour = data.optDouble("pricePerHour", 0.0),
+            maxCapacity = totalSlots,
+            currentOccupancy = totalSlots - availableSlots,
+            chargingRate = 50.0, // Default charging rate (kW)
+            pricePerHour = 5.0, // Default price per hour
             amenities = amenities,
             schedule = schedule
         )
