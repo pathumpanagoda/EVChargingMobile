@@ -216,6 +216,7 @@
                 android:id="@+id/btn_modify"
                 style="@style/SecondaryButton"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="@string/modify"
                 app:icon="@drawable/ic_edit" />
 
@@ -223,6 +224,7 @@
                 android:id="@+id/btn_cancel"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="@string/cancel"
                 android:textColor="@color/error"
                 app:icon="@drawable/ic_cancel" />
@@ -231,18 +233,19 @@
                 android:id="@+id/btn_show_qr"
                 style="@style/PrimaryButton"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="@string/show_qr"
                 app:icon="@drawable/ic_qr_code" />
 
         </LinearLayout>
 
-    </LinearLayout>
+        <!-- Loading View -->
+        <com.evcharge.mobile.ui.widgets.LoadingView
+            android:id="@+id/loading_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-    <!-- Loading View -->
-    <com.evcharge.mobile.ui.widgets.LoadingView
-        android:id="@+id/loading_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
+    </LinearLayout>
 
 </ScrollView>

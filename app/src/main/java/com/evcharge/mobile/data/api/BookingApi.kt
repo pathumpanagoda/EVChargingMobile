@@ -222,23 +222,16 @@ class BookingApi(private val apiClient: ApiClient) {
             id = data.optString("id"),
             ownerNic = data.optString("ownerNic"),
             stationId = data.optString("stationId"),
-<<<<<<< Updated upstream
             stationName = data.optString("stationName"),
             startTime = data.optLong("startTime"),
             endTime = data.optLong("endTime"),
-=======
-            stationName = data.optString("stationName") ?: "Unknown Station", // Backend doesn't provide station name
-            startTime = reservationDateTime ?: 0L,
-            endTime = endTime,
->>>>>>> Stashed changes
             status = status,
             createdAt = data.optLong("createdAt", System.currentTimeMillis()),
             updatedAt = data.optLong("updatedAt", System.currentTimeMillis()),
             qrCode = data.optString("qrCode")
         )
     }
-<<<<<<< Updated upstream
-=======
+
     
     /**
      * Parse ISO 8601 date string to timestamp
@@ -273,5 +266,4 @@ class BookingApi(private val apiClient: ApiClient) {
         android.util.Log.e("BookingApi", "Failed to parse date with any format: $dateString")
         return null
     }
->>>>>>> Stashed changes
 }

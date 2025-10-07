@@ -13,6 +13,7 @@ import com.evcharge.mobile.R
 import com.evcharge.mobile.common.Prefs
 import com.evcharge.mobile.common.Toasts
 import com.evcharge.mobile.common.getDataOrNull
+import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
@@ -59,23 +60,6 @@ class BookingListActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-<<<<<<< Updated upstream
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
-        
-        // Initialize UI components
-        tabLayout = findViewById(R.id.tab_layout)
-        recyclerView = findViewById(R.id.recycler_view)
-        emptyView = findViewById(R.id.empty_view)
-        fabNewBooking = findViewById(R.id.fab_new_booking)
-        loadingView = findViewById(R.id.loading_view)
-        
-        // Setup adapter
-        adapter = BookingAdapter { booking ->
-            openBookingDetail(booking)
-=======
         try {
             prefs = Prefs(this)
             val apiClient = ApiClient(prefs)
@@ -100,10 +84,7 @@ class BookingListActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toasts.showError(this, "Component initialization failed: ${e.message}")
             throw e
->>>>>>> Stashed changes
         }
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = adapter
     }
     
     private fun setupUI() {
@@ -141,14 +122,11 @@ class BookingListActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Load upcoming bookings
                 val upcomingResult = bookingRepository.getUpcomingBookings(ownerNic)
                 if (upcomingResult.isSuccess()) {
-<<<<<<< Updated upstream
-                    upcomingBookings = upcomingResult.getDataOrNull() ?: emptyList()
-=======
                     val bookings = upcomingResult.getDataOrNull() ?: emptyList()
                     android.util.Log.d("BookingListActivity", "Raw upcoming bookings count: ${bookings.size}")
                     // Enhance bookings with station details
@@ -163,15 +141,11 @@ class BookingListActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toasts.showWarning(this@BookingListActivity, "Failed to load upcoming: ${error?.message}")
                     }
->>>>>>> Stashed changes
                 }
                 
                 // Load history bookings
                 val historyResult = bookingRepository.getBookingHistory(ownerNic)
                 if (historyResult.isSuccess()) {
-<<<<<<< Updated upstream
-                    historyBookings = historyResult.getDataOrNull() ?: emptyList()
-=======
                     val bookings = historyResult.getDataOrNull() ?: emptyList()
                     android.util.Log.d("BookingListActivity", "Raw history bookings count: ${bookings.size}")
                     // Enhance bookings with station details
@@ -188,15 +162,20 @@ class BookingListActivity : AppCompatActivity() {
                         Toasts.showWarning(this@BookingListActivity, "Failed to load history: ${error?.message}")
                         updateDisplay()
                     }
->>>>>>> Stashed changes
                 }
                 
-                updateDisplay()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    updateDisplay()
+                }
                 
             } catch (e: Exception) {
-                Toasts.showError(this@BookingListActivity, "Failed to load bookings: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingListActivity, "Failed to load bookings: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
@@ -338,7 +317,7 @@ class BookingAdapter(
     class BookingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvStationName: MaterialTextView = itemView.findViewById(R.id.tv_station_name)
         private val tvDateTime: MaterialTextView = itemView.findViewById(R.id.tv_date_time)
-        private val tvStatus: MaterialTextView = itemView.findViewById(R.id.tv_status)
+        private val tvStatus: com.google.android.material.chip.Chip = itemView.findViewById(R.id.tv_status)
         private val tvDuration: MaterialTextView = itemView.findViewById(R.id.tv_duration)
         
         fun bind(booking: Booking, onBookingClick: (Booking) -> Unit) {
@@ -347,14 +326,25 @@ class BookingAdapter(
             tvStatus.text = booking.status.name
             tvDuration.text = formatDuration(booking.startTime, booking.endTime)
             
-            // Set status color
-            val statusColor = when (booking.status) {
-                BookingStatus.PENDING -> R.color.status_pending
-                BookingStatus.APPROVED -> R.color.status_approved
-                BookingStatus.COMPLETED -> R.color.status_completed
-                BookingStatus.CANCELLED -> R.color.status_cancelled
+            // Set status color and style
+            when (booking.status) {
+                BookingStatus.PENDING -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_pending)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.black))
+                }
+                BookingStatus.APPROVED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_approved)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
+                BookingStatus.COMPLETED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_completed)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
+                BookingStatus.CANCELLED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_cancelled)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
             }
-            tvStatus.setTextColor(itemView.context.getColor(statusColor))
             
             itemView.setOnClickListener {
                 onBookingClick(booking)

@@ -137,21 +137,27 @@ class BookingFormActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading stations...")
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = stationRepository.getAvailableStations()
                 
-                if (result.isSuccess()) {
-                    stations = result.getDataOrNull() ?: emptyList()
-                    setupStationSpinner()
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        stations = result.getDataOrNull() ?: emptyList()
+                        setupStationSpinner()
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingFormActivity, "Failed to load stations: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingFormActivity, "Failed to load stations: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

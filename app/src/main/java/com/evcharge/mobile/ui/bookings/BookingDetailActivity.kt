@@ -121,26 +121,14 @@ class BookingDetailActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading booking details...")
         
-<<<<<<< Updated upstream
-        lifecycleScope.launch {
-=======
         val ownerNic = prefs.getNIC()
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
->>>>>>> Stashed changes
             try {
                 // Get owner's bookings and find the specific booking
                 val result = bookingRepository.getOwnerBookings(ownerNic, false) // Include history
                 
                 if (result.isSuccess()) {
-<<<<<<< Updated upstream
-                    booking = result.getDataOrNull()
-                    if (booking != null) {
-                        updateUI()
-                    } else {
-                        Toasts.showError(this@BookingDetailActivity, "Booking not found")
-                        finish()
-=======
                     val bookings = result.getDataOrNull() ?: emptyList()
                     val foundBooking = bookings.find { it.id == bookingId }
                     
@@ -162,16 +150,16 @@ class BookingDetailActivity : AppCompatActivity() {
                     val error = result.getErrorOrNull()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to load booking")
->>>>>>> Stashed changes
                     }
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to load booking")
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingDetailActivity, "Failed to load booking: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingDetailActivity, "Failed to load booking: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

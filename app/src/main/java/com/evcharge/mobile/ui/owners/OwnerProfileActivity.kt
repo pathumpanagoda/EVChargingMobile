@@ -111,7 +111,7 @@ class OwnerProfileActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Try to get from server first
                 val result = ownerRepository.getOwner(ownerNic)
@@ -123,15 +123,21 @@ class OwnerProfileActivity : AppCompatActivity() {
                     ownerProfile = ownerRepository.getLocalOwner(ownerNic)
                 }
                 
-                if (ownerProfile != null) {
-                    updateUI()
-                } else {
-                    Toasts.showError(this@OwnerProfileActivity, "Failed to load profile")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (ownerProfile != null) {
+                        updateUI()
+                    } else {
+                        Toasts.showError(this@OwnerProfileActivity, "Failed to load profile")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@OwnerProfileActivity, "Failed to load profile: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

@@ -228,19 +228,6 @@ class OwnerDashboardActivity : AppCompatActivity() {
                 // Try to get data from backend first
                 val result = bookingRepository.getDashboardStats(ownerNic)
                 
-<<<<<<< Updated upstream
-                if (result.isSuccess()) {
-                    val stats = result.getDataOrNull() ?: DashboardStats()
-                    updateDashboardStats(stats)
-                    Toasts.showSuccess(this@OwnerDashboardActivity, "Connected to backend successfully!")
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@OwnerDashboardActivity, error?.message ?: "Failed to load dashboard data")
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("OwnerDashboard", "Error loading dashboard data", e)
-                Toasts.showError(this@OwnerDashboardActivity, "Failed to load dashboard data: ${e.message ?: e.javaClass.simpleName}")
-=======
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (result.isSuccess()) {
                         val stats = result.getDataOrNull() ?: DashboardStats()
@@ -267,7 +254,6 @@ class OwnerDashboardActivity : AppCompatActivity() {
                     // Set default values for offline mode
                     updateDashboardStats(DashboardStats())
                 }
->>>>>>> Stashed changes
             } finally {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     loadingView.hide()
