@@ -205,22 +205,28 @@ class OwnerProfileActivity : AppCompatActivity() {
         val request = OwnerUpdateRequest(name, email, phone)
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = ownerRepository.updateOwner(ownerNic, request)
                 
-                if (result.isSuccess()) {
-                    ownerProfile = result.getDataOrNull()
-                    Toasts.showSuccess(this@OwnerProfileActivity, "Profile updated successfully")
-                    disableEditing()
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@OwnerProfileActivity, error?.message ?: "Failed to update profile")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        ownerProfile = result.getDataOrNull()
+                        Toasts.showSuccess(this@OwnerProfileActivity, "Profile updated successfully")
+                        disableEditing()
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@OwnerProfileActivity, error?.message ?: "Failed to update profile")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerProfileActivity, "Failed to update profile: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@OwnerProfileActivity, "Failed to update profile: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
@@ -242,27 +248,33 @@ class OwnerProfileActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = ownerRepository.deactivateOwner(ownerNic, "User requested deactivation")
                 
-                if (result.isSuccess()) {
-                    Toasts.showSuccess(this@OwnerProfileActivity, "Account deactivated successfully")
-                    
-                    // Logout and return to login
-                    authRepository.logout()
-                    val intent = Intent(this@OwnerProfileActivity, AuthActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                    finish()
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@OwnerProfileActivity, error?.message ?: "Failed to deactivate account")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        Toasts.showSuccess(this@OwnerProfileActivity, "Account deactivated successfully")
+                        
+                        // Logout and return to login
+                        authRepository.logout()
+                        val intent = Intent(this@OwnerProfileActivity, AuthActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@OwnerProfileActivity, error?.message ?: "Failed to deactivate account")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerProfileActivity, "Failed to deactivate account: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@OwnerProfileActivity, "Failed to deactivate account: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

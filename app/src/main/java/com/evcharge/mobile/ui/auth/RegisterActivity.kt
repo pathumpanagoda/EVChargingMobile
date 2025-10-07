@@ -97,29 +97,35 @@ class RegisterActivity : AppCompatActivity() {
         
         val request = RegisterRequest(nic, name, email, phone, password)
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = authRepository.registerOwner(request)
                 
-                if (result.isSuccess()) {
-                    val registerResponse = result.getDataOrNull()
-                    if (registerResponse?.data != null) {
-                        Toasts.showSuccess(this@RegisterActivity, "Registration successful")
-                        navigateToDashboard()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val registerResponse = result.getDataOrNull()
+                        if (registerResponse?.data != null) {
+                            Toasts.showSuccess(this@RegisterActivity, "Registration successful")
+                            navigateToDashboard()
+                        } else {
+                            Toasts.showError(this@RegisterActivity, "Registration failed")
+                        }
                     } else {
-                        Toasts.showError(this@RegisterActivity, "Registration failed")
+                        val error = result.getErrorOrNull()
+                        val message = error?.message ?: "Registration failed"
+                        Toasts.showError(this@RegisterActivity, message)
                     }
-                } else {
-                    val error = result.getErrorOrNull()
-                    val message = error?.message ?: "Registration failed"
-                    Toasts.showError(this@RegisterActivity, message)
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@RegisterActivity, "Registration failed: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@RegisterActivity, "Registration failed: ${e.message}")
+                }
             } finally {
-                // Reset button
-                btnRegister.isEnabled = true
-                btnRegister.text = getString(R.string.register_button)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    // Reset button
+                    btnRegister.isEnabled = true
+                    btnRegister.text = getString(R.string.register_button)
+                }
             }
         }
     }

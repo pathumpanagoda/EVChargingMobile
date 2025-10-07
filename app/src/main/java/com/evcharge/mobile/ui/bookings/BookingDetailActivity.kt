@@ -15,9 +15,11 @@ import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
+import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
+import com.evcharge.mobile.data.repo.StationRepository
 import com.evcharge.mobile.ui.qr.QrCodeActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
@@ -31,6 +33,7 @@ class BookingDetailActivity : AppCompatActivity() {
     
     private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
+    private lateinit var stationRepository: StationRepository
     
     // UI Components
     private lateinit var tvStationName: MaterialTextView
@@ -62,7 +65,9 @@ class BookingDetailActivity : AppCompatActivity() {
         prefs = Prefs(this)
         val apiClient = ApiClient(prefs)
         val bookingApi = BookingApi(apiClient)
+        val stationApi = StationApi(apiClient)
         bookingRepository = BookingRepository(bookingApi)
+        stationRepository = StationRepository(stationApi)
         
         // Get booking ID from intent
         bookingId = intent.getStringExtra("booking_id") ?: ""
@@ -116,17 +121,48 @@ class BookingDetailActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading booking details...")
         
+<<<<<<< Updated upstream
         lifecycleScope.launch {
+=======
+        val ownerNic = prefs.getNIC()
+        
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+>>>>>>> Stashed changes
             try {
-                val result = bookingRepository.getBooking(bookingId)
+                // Get owner's bookings and find the specific booking
+                val result = bookingRepository.getOwnerBookings(ownerNic, false) // Include history
                 
                 if (result.isSuccess()) {
+<<<<<<< Updated upstream
                     booking = result.getDataOrNull()
                     if (booking != null) {
                         updateUI()
                     } else {
                         Toasts.showError(this@BookingDetailActivity, "Booking not found")
                         finish()
+=======
+                    val bookings = result.getDataOrNull() ?: emptyList()
+                    val foundBooking = bookings.find { it.id == bookingId }
+                    
+                    if (foundBooking != null) {
+                        // Enhance booking with station details
+                        val enhancedBooking = enhanceBookingWithStationDetails(foundBooking)
+                        
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            booking = enhancedBooking
+                            updateUI()
+                        }
+                    } else {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toasts.showError(this@BookingDetailActivity, "Booking not found")
+                            finish()
+                        }
+                    }
+                } else {
+                    val error = result.getErrorOrNull()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to load booking")
+>>>>>>> Stashed changes
                     }
                 } else {
                     val error = result.getErrorOrNull()
@@ -140,11 +176,50 @@ class BookingDetailActivity : AppCompatActivity() {
         }
     }
     
+    /**
+     * Enhance booking data with station details
+     */
+    private suspend fun enhanceBookingWithStationDetails(booking: Booking): Booking {
+        return try {
+            if (booking.stationId.isNotEmpty()) {
+                val stationResult = stationRepository.getStation(booking.stationId)
+                if (stationResult.isSuccess()) {
+                    val station = stationResult.getDataOrNull()
+                    if (station != null) {
+                        // Create enhanced booking with station details
+                        booking.copy(
+                            stationName = station.name,
+                            stationId = station.id
+                        )
+                    } else {
+                        // Station not found, use fallback name
+                        booking.copy(
+                            stationName = "Station ${booking.stationId.take(8)}..."
+                        )
+                    }
+                } else {
+                    // Station API failed, use fallback name
+                    booking.copy(
+                        stationName = "Station ${booking.stationId.take(8)}..."
+                    )
+                }
+            } else {
+                booking
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("BookingDetailActivity", "Failed to load station details: ${e.message}")
+            // Network error, use fallback name
+            booking.copy(
+                stationName = "Station ${booking.stationId.take(8)}..."
+            )
+        }
+    }
+    
     private fun updateUI() {
         val booking = this.booking ?: return
         
         tvStationName.text = booking.stationName ?: "Unknown Station"
-        tvAddress.text = "Station Address" // TODO: Get actual address
+        tvAddress.text = "Station ID: ${booking.stationId}" // Display station ID for now
         tvStartTime.text = Datex.formatToDisplay(booking.startTime)
         tvEndTime.text = Datex.formatToDisplay(booking.endTime)
         tvDuration.text = formatDuration(booking.startTime, booking.endTime)
@@ -213,21 +288,27 @@ class BookingDetailActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Cancelling booking...")
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = bookingRepository.cancelBooking(bookingId)
                 
-                if (result.isSuccess()) {
-                    Toasts.showSuccess(this@BookingDetailActivity, "Booking cancelled successfully")
-                    finish()
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to cancel booking")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        Toasts.showSuccess(this@BookingDetailActivity, "Booking cancelled successfully")
+                        finish()
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to cancel booking")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingDetailActivity, "Failed to cancel booking: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingDetailActivity, "Failed to cancel booking: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

@@ -59,7 +59,7 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a PUT request
      */
-    fun put(path: String, body: JSONObject): JSONObject {
+    fun put(path: String, body: JSONObject): JSONObject{
         val requestBody = body.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url("$BASE_URL$path")

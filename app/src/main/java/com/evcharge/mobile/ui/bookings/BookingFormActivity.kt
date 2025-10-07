@@ -315,29 +315,35 @@ class BookingFormActivity : AppCompatActivity() {
         
         val request = BookingCreateRequest(selectedStationId, startDateTime, endDateTime)
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = bookingRepository.createBooking(request)
                 
-                if (result.isSuccess()) {
-                    val booking = result.getDataOrNull()
-                    if (booking != null) {
-                        Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
-                        
-                        // Open booking detail
-                        val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
-                        intent.putExtra("booking_id", booking.id)
-                        startActivity(intent)
-                        finish()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val booking = result.getDataOrNull()
+                        if (booking != null) {
+                            Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
+                            
+                            // Open booking detail
+                            val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
+                            intent.putExtra("booking_id", booking.id)
+                            startActivity(intent)
+                            finish()
+                        }
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
                     }
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

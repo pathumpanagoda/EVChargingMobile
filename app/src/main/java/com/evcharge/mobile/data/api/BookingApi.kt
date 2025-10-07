@@ -222,13 +222,56 @@ class BookingApi(private val apiClient: ApiClient) {
             id = data.optString("id"),
             ownerNic = data.optString("ownerNic"),
             stationId = data.optString("stationId"),
+<<<<<<< Updated upstream
             stationName = data.optString("stationName"),
             startTime = data.optLong("startTime"),
             endTime = data.optLong("endTime"),
+=======
+            stationName = data.optString("stationName") ?: "Unknown Station", // Backend doesn't provide station name
+            startTime = reservationDateTime ?: 0L,
+            endTime = endTime,
+>>>>>>> Stashed changes
             status = status,
             createdAt = data.optLong("createdAt", System.currentTimeMillis()),
             updatedAt = data.optLong("updatedAt", System.currentTimeMillis()),
             qrCode = data.optString("qrCode")
         )
     }
+<<<<<<< Updated upstream
+=======
+    
+    /**
+     * Parse ISO 8601 date string to timestamp
+     */
+    private fun parseIso8601(dateString: String): Long? {
+        if (dateString.isEmpty()) return null
+        
+        // Try multiple date formats
+        val formats = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", // 2024-12-19T10:30:00.000Z
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",     // 2024-12-19T10:30:00Z
+            "yyyy-MM-dd'T'HH:mm:ss",        // 2024-12-19T10:30:00
+            "yyyy-MM-dd HH:mm:ss",          // 2024-12-19 10:30:00
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",    // 2024-12-19T10:30:00.000
+        )
+        
+        for (formatPattern in formats) {
+            try {
+                val format = java.text.SimpleDateFormat(formatPattern, java.util.Locale.US)
+                format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                val parsed = format.parse(dateString)
+                if (parsed != null) {
+                    android.util.Log.d("BookingApi", "Successfully parsed date: $dateString with format: $formatPattern")
+                    return parsed.time
+                }
+            } catch (e: Exception) {
+                // Try next format
+                continue
+            }
+        }
+        
+        android.util.Log.e("BookingApi", "Failed to parse date with any format: $dateString")
+        return null
+    }
+>>>>>>> Stashed changes
 }

@@ -51,12 +51,46 @@ class Prefs(context: Context) {
     /**
      * Get user role
      */
-    fun getRole(): String = prefs.getString(KEY_ROLE, "") ?: ""
+    fun getRole(): String {
+        val storedRole = prefs.getString(KEY_ROLE, "") ?: ""
+        
+        // If role is not stored, try to extract from JWT token
+        if (storedRole.isEmpty()) {
+            val token = getToken()
+            if (token.isNotEmpty()) {
+                val extractedRole = JwtUtils.extractRole(token)
+                if (!extractedRole.isNullOrEmpty()) {
+                    // Save the extracted role for future use
+                    prefs.edit().putString(KEY_ROLE, extractedRole).apply()
+                    return extractedRole
+                }
+            }
+        }
+        
+        return storedRole
+    }
     
     /**
      * Get user NIC
      */
-    fun getNIC(): String = prefs.getString(KEY_NIC, "") ?: ""
+    fun getNIC(): String {
+        val storedNIC = prefs.getString(KEY_NIC, "") ?: ""
+        
+        // If NIC is not stored, try to extract from JWT token
+        if (storedNIC.isEmpty()) {
+            val token = getToken()
+            if (token.isNotEmpty()) {
+                val extractedNIC = JwtUtils.extractNIC(token)
+                if (!extractedNIC.isNullOrEmpty()) {
+                    // Save the extracted NIC for future use
+                    prefs.edit().putString(KEY_NIC, extractedNIC).apply()
+                    return extractedNIC
+                }
+            }
+        }
+        
+        return storedNIC
+    }
     
     /**
      * Check if user is logged in

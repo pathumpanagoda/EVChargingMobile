@@ -223,11 +223,12 @@ class OwnerDashboardActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Try to get data from backend first
                 val result = bookingRepository.getDashboardStats(ownerNic)
                 
+<<<<<<< Updated upstream
                 if (result.isSuccess()) {
                     val stats = result.getDataOrNull() ?: DashboardStats()
                     updateDashboardStats(stats)
@@ -239,8 +240,38 @@ class OwnerDashboardActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 android.util.Log.e("OwnerDashboard", "Error loading dashboard data", e)
                 Toasts.showError(this@OwnerDashboardActivity, "Failed to load dashboard data: ${e.message ?: e.javaClass.simpleName}")
+=======
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val stats = result.getDataOrNull() ?: DashboardStats()
+                        updateDashboardStats(stats)
+                    } else {
+                        val error = result.getErrorOrNull()
+                        val errorMessage = error?.message ?: "Failed to load dashboard"
+                        
+                        // Check if it's a network error and show appropriate message
+                        if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
+                            // Only show warning once, not every time
+                            android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode.")
+                            // Set default values for offline mode
+                            updateDashboardStats(DashboardStats())
+                        } else {
+                            Toasts.showError(this@OwnerDashboardActivity, errorMessage)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    // Only log the error, don't show intrusive toast
+                    android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode: ${e.message}")
+                    // Set default values for offline mode
+                    updateDashboardStats(DashboardStats())
+                }
+>>>>>>> Stashed changes
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }

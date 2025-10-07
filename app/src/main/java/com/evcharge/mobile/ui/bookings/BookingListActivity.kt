@@ -16,9 +16,11 @@ import com.evcharge.mobile.common.getDataOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
+import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
+import com.evcharge.mobile.data.repo.StationRepository
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
@@ -32,6 +34,7 @@ class BookingListActivity : AppCompatActivity() {
     
     private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
+    private lateinit var stationRepository: StationRepository
     
     // UI Components
     private lateinit var tabLayout: TabLayout
@@ -56,6 +59,7 @@ class BookingListActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
+<<<<<<< Updated upstream
         prefs = Prefs(this)
         val apiClient = ApiClient(prefs)
         val bookingApi = BookingApi(apiClient)
@@ -71,6 +75,32 @@ class BookingListActivity : AppCompatActivity() {
         // Setup adapter
         adapter = BookingAdapter { booking ->
             openBookingDetail(booking)
+=======
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val bookingApi = BookingApi(apiClient)
+            val stationApi = StationApi(apiClient)
+            bookingRepository = BookingRepository(bookingApi)
+            stationRepository = StationRepository(stationApi)
+            
+            // Initialize UI components
+            tabLayout = findViewById(R.id.tab_layout)
+            recyclerView = findViewById(R.id.recycler_view)
+            emptyView = findViewById(R.id.empty_view)
+            fabNewBooking = findViewById(R.id.fab_new_booking)
+            loadingView = findViewById(R.id.loading_view)
+            
+            // Setup adapter
+            adapter = BookingAdapter { booking ->
+                openBookingDetail(booking)
+            }
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            recyclerView.adapter = adapter
+        } catch (e: Exception) {
+            Toasts.showError(this, "Component initialization failed: ${e.message}")
+            throw e
+>>>>>>> Stashed changes
         }
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
@@ -116,13 +146,49 @@ class BookingListActivity : AppCompatActivity() {
                 // Load upcoming bookings
                 val upcomingResult = bookingRepository.getUpcomingBookings(ownerNic)
                 if (upcomingResult.isSuccess()) {
+<<<<<<< Updated upstream
                     upcomingBookings = upcomingResult.getDataOrNull() ?: emptyList()
+=======
+                    val bookings = upcomingResult.getDataOrNull() ?: emptyList()
+                    android.util.Log.d("BookingListActivity", "Raw upcoming bookings count: ${bookings.size}")
+                    // Enhance bookings with station details
+                    upcomingBookings = enhanceBookingsWithStationDetails(bookings)
+                    android.util.Log.d("BookingListActivity", "Enhanced upcoming bookings count: ${upcomingBookings.size}")
+                    
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toasts.showInfo(this@BookingListActivity, "Loaded ${upcomingBookings.size} upcoming bookings")
+                    }
+                } else {
+                    val error = upcomingResult.getErrorOrNull()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toasts.showWarning(this@BookingListActivity, "Failed to load upcoming: ${error?.message}")
+                    }
+>>>>>>> Stashed changes
                 }
                 
                 // Load history bookings
                 val historyResult = bookingRepository.getBookingHistory(ownerNic)
                 if (historyResult.isSuccess()) {
+<<<<<<< Updated upstream
                     historyBookings = historyResult.getDataOrNull() ?: emptyList()
+=======
+                    val bookings = historyResult.getDataOrNull() ?: emptyList()
+                    android.util.Log.d("BookingListActivity", "Raw history bookings count: ${bookings.size}")
+                    // Enhance bookings with station details
+                    historyBookings = enhanceBookingsWithStationDetails(bookings)
+                    android.util.Log.d("BookingListActivity", "Enhanced history bookings count: ${historyBookings.size}")
+                    
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toasts.showInfo(this@BookingListActivity, "Loaded ${historyBookings.size} history bookings")
+                        updateDisplay()
+                    }
+                } else {
+                    val error = historyResult.getErrorOrNull()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toasts.showWarning(this@BookingListActivity, "Failed to load history: ${error?.message}")
+                        updateDisplay()
+                    }
+>>>>>>> Stashed changes
                 }
                 
                 updateDisplay()
@@ -132,6 +198,64 @@ class BookingListActivity : AppCompatActivity() {
             } finally {
                 loadingView.hide()
             }
+        }
+    }
+    
+    /**
+     * Enhance booking data with station details
+     */
+    private suspend fun enhanceBookingsWithStationDetails(bookings: List<Booking>): List<Booking> {
+        return try {
+            val enhancedBookings = mutableListOf<Booking>()
+            
+            for (booking in bookings) {
+                if (booking.stationId.isNotEmpty()) {
+                    try {
+                        val stationResult = stationRepository.getStation(booking.stationId)
+                        if (stationResult.isSuccess()) {
+                            val station = stationResult.getDataOrNull()
+                            if (station != null) {
+                                // Create enhanced booking with station details
+                                val enhancedBooking = booking.copy(
+                                    stationName = station.name,
+                                    stationId = station.id
+                                )
+                                enhancedBookings.add(enhancedBooking)
+                                android.util.Log.d("BookingListActivity", "Enhanced booking ${booking.id} with station: ${station.name}")
+                            } else {
+                                // Station not found, use original booking with fallback name
+                                val enhancedBooking = booking.copy(
+                                    stationName = "Station ${booking.stationId.take(8)}..."
+                                )
+                                enhancedBookings.add(enhancedBooking)
+                                android.util.Log.w("BookingListActivity", "Station not found for ${booking.stationId}, using fallback name")
+                            }
+                        } else {
+                            // Station API failed, use original booking with fallback name
+                            val enhancedBooking = booking.copy(
+                                stationName = "Station ${booking.stationId.take(8)}..."
+                            )
+                            enhancedBookings.add(enhancedBooking)
+                            android.util.Log.w("BookingListActivity", "Station API failed for ${booking.stationId}, using fallback name")
+                        }
+                    } catch (e: Exception) {
+                        // Network error, use original booking with fallback name
+                        val enhancedBooking = booking.copy(
+                            stationName = "Station ${booking.stationId.take(8)}..."
+                        )
+                        enhancedBookings.add(enhancedBooking)
+                        android.util.Log.w("BookingListActivity", "Network error loading station ${booking.stationId}: ${e.message}")
+                    }
+                } else {
+                    // No station ID, use original booking
+                    enhancedBookings.add(booking)
+                }
+            }
+            
+            enhancedBookings
+        } catch (e: Exception) {
+            android.util.Log.e("BookingListActivity", "Failed to enhance bookings with station details: ${e.message}")
+            bookings
         }
     }
     

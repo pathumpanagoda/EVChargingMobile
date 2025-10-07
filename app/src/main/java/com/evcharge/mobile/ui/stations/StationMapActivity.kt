@@ -128,7 +128,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         loadingView.show()
         loadingView.setMessage("Loading nearby stations...")
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = if (currentLocation != null) {
                     stationRepository.getNearbyStations(
@@ -140,17 +140,23 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
                     stationRepository.getAllStations()
                 }
                 
-                if (result.isSuccess()) {
-                    stations = result.getDataOrNull() ?: emptyList()
-                    updateMapWithStations()
-                } else {
-                    val error = result.getErrorOrNull()
-                    Toasts.showError(this@StationMapActivity, error?.message ?: "Failed to load stations")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        stations = result.getDataOrNull() ?: emptyList()
+                        updateMapWithStations()
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@StationMapActivity, error?.message ?: "Failed to load stations")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@StationMapActivity, "Failed to load stations: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@StationMapActivity, "Failed to load stations: ${e.message}")
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
