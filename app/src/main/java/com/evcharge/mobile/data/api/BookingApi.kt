@@ -66,12 +66,9 @@ class BookingApi(private val apiClient: ApiClient) {
     /**
      * Get bookings for owner
      */
-    suspend fun getOwnerBookings(ownerNic: String, upcoming: Boolean? = null): Result<List<Booking>> {
+    suspend fun getOwnerBookings(ownerNic: String, includeHistory: Boolean = true): Result<List<Booking>> {
         return try {
-            var path = "/api/booking/owner/$ownerNic"
-            if (upcoming != null) {
-                path += "?upcoming=$upcoming"
-            }
+            val path = "/api/booking/owner/$ownerNic?includeHistory=$includeHistory"
             
             val response = apiClient.get(path)
             
@@ -156,10 +153,10 @@ class BookingApi(private val apiClient: ApiClient) {
                 val data = response.optJSONObject("data")
                 if (data != null) {
                     val stats = DashboardStats(
-                        pendingCount = data.optInt("pendingCount", 0),
-                        approvedCount = data.optInt("approvedCount", 0),
-                        completedCount = data.optInt("completedCount", 0),
-                        cancelledCount = data.optInt("cancelledCount", 0)
+                        pendingCount = data.optInt("pendingReservations", 0),
+                        approvedCount = data.optInt("approvedFutureReservations", 0),
+                        completedCount = 0, // Backend doesn't provide this separately
+                        cancelledCount = 0  // Backend doesn't provide this separately
                     )
                     Result.Success(stats)
                 } else {
@@ -209,7 +206,7 @@ class BookingApi(private val apiClient: ApiClient) {
      * Parse booking from JSON
      */
     private fun parseBooking(data: JSONObject): Booking {
-        val statusString = data.optString("status", "PENDING")
+        val statusString = data.optString("status", "Pending")
         val status = when (statusString.uppercase()) {
             "PENDING" -> BookingStatus.PENDING
             "APPROVED" -> BookingStatus.APPROVED
@@ -218,17 +215,24 @@ class BookingApi(private val apiClient: ApiClient) {
             else -> BookingStatus.PENDING
         }
         
+        // Parse dates from backend format
+        val reservationDateTime = data.optString("reservationDateTime", "")
+        val startTime = parseIso8601(reservationDateTime) ?: System.currentTimeMillis()
+        
+        // For end time, we'll use start time + 2 hours as default (backend doesn't store end time separately)
+        val endTime = startTime + (2 * 60 * 60 * 1000) // 2 hours in milliseconds
+        
         return Booking(
             id = data.optString("id"),
-            ownerNic = data.optString("ownerNic"),
+            ownerNic = data.optString("evOwnerNIC"),
             stationId = data.optString("stationId"),
             stationName = data.optString("stationName"),
-            startTime = data.optLong("startTime"),
-            endTime = data.optLong("endTime"),
+            startTime = startTime,
+            endTime = endTime,
             status = status,
-            createdAt = data.optLong("createdAt", System.currentTimeMillis()),
-            updatedAt = data.optLong("updatedAt", System.currentTimeMillis()),
-            qrCode = data.optString("qrCode")
+            createdAt = parseIso8601(data.optString("createdAt")) ?: System.currentTimeMillis(),
+            updatedAt = parseIso8601(data.optString("updatedAt")) ?: System.currentTimeMillis(),
+            qrCode = data.optString("qrPayload")
         )
     }
 

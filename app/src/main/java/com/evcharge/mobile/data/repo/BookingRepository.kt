@@ -26,8 +26,8 @@ class BookingRepository(private val bookingApi: BookingApi) {
     /**
      * Get bookings for owner
      */
-    suspend fun getOwnerBookings(ownerNic: String, upcoming: Boolean? = null): Result<List<Booking>> {
-        return bookingApi.getOwnerBookings(ownerNic, upcoming)
+    suspend fun getOwnerBookings(ownerNic: String, includeHistory: Boolean = true): Result<List<Booking>> {
+        return bookingApi.getOwnerBookings(ownerNic, includeHistory)
     }
     
     /**
@@ -59,23 +59,23 @@ class BookingRepository(private val bookingApi: BookingApi) {
     }
     
     /**
-     * Get upcoming bookings for owner
+     * Get upcoming bookings for owner (exclude history)
      */
     suspend fun getUpcomingBookings(ownerNic: String): Result<List<Booking>> {
-        return getOwnerBookings(ownerNic, true)
+        return getOwnerBookings(ownerNic, false)
     }
     
     /**
-     * Get booking history for owner
+     * Get booking history for owner (include history)
      */
     suspend fun getBookingHistory(ownerNic: String): Result<List<Booking>> {
-        return getOwnerBookings(ownerNic, false)
+        return getOwnerBookings(ownerNic, true)
     }
     
     /**
      * Get all bookings for owner (both upcoming and history)
      */
     suspend fun getAllBookings(ownerNic: String): Result<List<Booking>> {
-        return getOwnerBookings(ownerNic, null)
+        return getOwnerBookings(ownerNic, true)
     }
 }

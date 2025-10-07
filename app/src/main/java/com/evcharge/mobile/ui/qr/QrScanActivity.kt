@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.evcharge.mobile.R
 import com.evcharge.mobile.common.Permissions
 import com.evcharge.mobile.common.Toasts
@@ -22,6 +23,9 @@ import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import com.evcharge.mobile.common.Prefs
+import com.evcharge.mobile.common.getErrorOrNull
+import com.evcharge.mobile.common.isSuccess
+import kotlinx.coroutines.launch
 
 /**
  * QR Code scanning activity for operators
@@ -118,20 +122,28 @@ class QrScanActivity : AppCompatActivity() {
         // Show loading
         Toasts.showLoading(this, "Processing booking...")
         
-        // In a real app, you would use coroutines here
-        // For now, we'll simulate the API call
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        // Use real API call with coroutines
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                // Simulate successful completion
-                Toasts.showSuccess(this, "Booking completed successfully")
+                val result = bookingRepository.completeBooking(bookingId, qrCode)
                 
-                // Show completion dialog
-                showCompletionDialog(bookingId)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        Toasts.showSuccess(this@QrScanActivity, "Booking completed successfully")
+                        showCompletionDialog(bookingId)
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@QrScanActivity, "Failed to complete booking: ${error?.message}")
+                        resumeScanning()
+                    }
+                }
             } catch (e: Exception) {
-                Toasts.showError(this, "Failed to complete booking: ${e.message}")
-                resumeScanning()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@QrScanActivity, "Failed to complete booking: ${e.message}")
+                    resumeScanning()
+                }
             }
-        }, 2000)
+        }
     }
     
     private fun showCompletionDialog(bookingId: String) {

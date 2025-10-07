@@ -14,7 +14,7 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getAllStations(): Result<List<Station>> {
         return try {
-            val response = apiClient.get("/api/station")
+            val response = apiClient.get("/api/chargingstation")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONArray("data")
@@ -43,7 +43,7 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getStation(stationId: String): Result<Station> {
         return try {
-            val response = apiClient.get("/api/station/$stationId")
+            val response = apiClient.get("/api/chargingstation/$stationId")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
@@ -67,7 +67,7 @@ class StationApi(private val apiClient: ApiClient) {
      */
     suspend fun getNearbyStations(latitude: Double, longitude: Double, radius: Double = 10.0): Result<List<Station>> {
         return try {
-            val response = apiClient.get("/api/station/nearby?lat=$latitude&lng=$longitude&radius=$radius")
+            val response = apiClient.get("/api/chargingstation/nearby?latitude=$latitude&longitude=$longitude&maxDistanceKm=$radius")
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONArray("data")
@@ -102,7 +102,7 @@ class StationApi(private val apiClient: ApiClient) {
                 put("endTime", endTime)
             }
             
-            val response = apiClient.post("/api/station/availability", body)
+            val response = apiClient.post("/api/chargingstation/availability", body)
             
             if (response.optBoolean("success", false)) {
                 val data = response.optJSONObject("data")
@@ -138,12 +138,21 @@ class StationApi(private val apiClient: ApiClient) {
      * Parse station from JSON
      */
     private fun parseStation(data: JSONObject): Station {
-        val statusString = data.optString("status", "AVAILABLE")
-        val status = when (statusString.uppercase()) {
-            "AVAILABLE" -> StationStatus.AVAILABLE
-            "OCCUPIED" -> StationStatus.OCCUPIED
-            "MAINTENANCE" -> StationStatus.MAINTENANCE
-            "OFFLINE" -> StationStatus.OFFLINE
+        // Parse location object
+        val locationData = data.optJSONObject("location")
+        val latitude = locationData?.optDouble("latitude", 0.0) ?: data.optDouble("latitude", 0.0)
+        val longitude = locationData?.optDouble("longitude", 0.0) ?: data.optDouble("longitude", 0.0)
+        val address = locationData?.optString("address", "") ?: data.optString("address", "")
+        
+        // Determine status based on availability
+        val isActive = data.optBoolean("isActive", true)
+        val availableSlots = data.optInt("availableSlots", 0)
+        val totalSlots = data.optInt("totalSlots", 1)
+        
+        val status = when {
+            !isActive -> StationStatus.OFFLINE
+            availableSlots == 0 -> StationStatus.OCCUPIED
+            availableSlots < totalSlots -> StationStatus.AVAILABLE
             else -> StationStatus.AVAILABLE
         }
         
@@ -173,12 +182,12 @@ class StationApi(private val apiClient: ApiClient) {
         return Station(
             id = data.optString("id"),
             name = data.optString("name"),
-            address = data.optString("address"),
-            latitude = data.optDouble("latitude", 0.0),
-            longitude = data.optDouble("longitude", 0.0),
+            address = address,
+            latitude = latitude,
+            longitude = longitude,
             status = status,
-            maxCapacity = data.optInt("maxCapacity", 1),
-            currentOccupancy = data.optInt("currentOccupancy", 0),
+            maxCapacity = totalSlots,
+            currentOccupancy = totalSlots - availableSlots,
             chargingRate = data.optDouble("chargingRate", 0.0),
             pricePerHour = data.optDouble("pricePerHour", 0.0),
             amenities = amenities,
