@@ -37,25 +37,45 @@ class QrScanActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_qr_scan)
         
-        initializeComponents()
-        setupUI()
-        checkCameraPermission()
+        try {
+            initializeComponents()
+            setupUI()
+            checkCameraPermission()
+        } catch (e: Exception) {
+            Toasts.showError(this, "QR Scanner initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun initializeComponents() {
-        barcodeView = findViewById(R.id.barcode_scanner)
-        
-        val prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
+        try {
+            barcodeView = findViewById(R.id.barcode_scanner)
+            
+            val prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val bookingApi = BookingApi(apiClient)
+            bookingRepository = BookingRepository(bookingApi)
+        } catch (e: Exception) {
+            Toasts.showError(this, "Component initialization failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Scan QR Code"
+        try {
+            // Set up toolbar with error handling for action bar conflict
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+                supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                supportActionBar?.title = "Scan QR Code"
+            } catch (e: Exception) {
+                // Handle action bar conflict gracefully
+                Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun checkCameraPermission() {

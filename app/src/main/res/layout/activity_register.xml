@@ -31,8 +31,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Create your EV Owner account"
-                android:textAppearance="@style/TextAppearance.Subtitle" />
+                android:text="@string/create_ev_owner_account"
+                android:textAppearance="@style/TextAppearance.Subtitle"
+                android:textColor="@color/text_secondary" />
 
         </LinearLayout>
 
@@ -52,12 +53,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_nic"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/nic"
                     app:startIconDrawable="@drawable/ic_badge">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_nic"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="text"
                         android:maxLines="1" />
 
@@ -67,12 +72,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_name"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/name"
                     app:startIconDrawable="@drawable/ic_person">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_name"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textPersonName"
                         android:maxLines="1" />
 
@@ -82,12 +91,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_email"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/email"
                     app:startIconDrawable="@drawable/ic_email">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_email"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textEmailAddress"
                         android:maxLines="1" />
 
@@ -97,12 +110,16 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_phone"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/phone"
                     app:startIconDrawable="@drawable/ic_phone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_phone"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="phone"
                         android:maxLines="1" />
 
@@ -112,6 +129,8 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_password"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/password"
                     app:endIconMode="password_toggle"
                     app:startIconDrawable="@drawable/ic_lock">
@@ -119,6 +138,8 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_password"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textPassword"
                         android:maxLines="1" />
 
@@ -128,6 +149,8 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/input_confirm_password"
                     style="@style/InputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:hint="@string/confirm_password"
                     app:endIconMode="password_toggle"
                     app:startIconDrawable="@drawable/ic_lock">
@@ -135,6 +158,8 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_confirm_password"
                         style="@style/InputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:inputType="textPassword"
                         android:maxLines="1" />
 
@@ -147,7 +172,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="16dp"
-                    android:text="@string/register_button" />
+                    android:layout_marginHorizontal="16dp"
+                    android:text="@string/register_button"
+                    android:contentDescription="@string/register_button" />
 
                 <!-- Login Link -->
                 <LinearLayout
@@ -168,7 +195,9 @@
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/login_here" />
+                        android:text="@string/login_here"
+                        android:textColor="@color/primary"
+                        android:contentDescription="@string/login_here" />
 
                 </LinearLayout>
 

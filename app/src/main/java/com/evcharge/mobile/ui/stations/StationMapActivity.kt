@@ -1,6 +1,7 @@
 package com.evcharge.mobile.ui.stations
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -218,6 +219,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
             .show()
     }
     
+    @SuppressLint("MissingPermission")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         

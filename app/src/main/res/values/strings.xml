@@ -37,7 +37,6 @@
     <string name="bookings_title">My Bookings</string>
     <string name="upcoming">Upcoming</string>
     <string name="history">History</string>
-    <string name="new_booking">New Booking</string>
     <string name="booking_details">Booking Details</string>
     <string name="station">Station</string>
     <string name="start_time">Start Time</string>
@@ -124,4 +123,23 @@
     
     <!-- Google Maps -->
     <string name="google_maps_key">AIzaSyBvOkBwv7wJhDmUz8x9Yz2A3B4C5D6E7F8G9H0</string>
+    
+    <!-- Additional strings -->
+    <string name="date_time">Date &amp; Time</string>
+    <string name="time">Time</string>
+    <string name="duration">Duration</string>
+    <string name="created">Created</string>
+    <string name="new_booking">Create New Booking</string>
+    <string name="no_bookings_found">No bookings found</string>
+    <string name="tab_bookings">Bookings</string>
+    <string name="tab_upcoming">Upcoming</string>
+    <string name="tab_history">History</string>
+    <string name="profile_information">Profile Information</string>
+    <string name="create_ev_owner_account">Create your EV Owner account</string>
+    <string name="welcome_operator">Welcome, Operator!</string>
+    <string name="scan_qr_description">Scan QR codes to complete bookings</string>
+    <string name="instructions">Instructions</string>
+    <string name="scan_instructions">1. Tap \'Scan QR Code\' button\n2. Point camera at booking QR code\n3. Confirm completion when prompted</string>
+    <string name="scan_instructions_title">Scan Instructions</string>
+    <string name="scan_instructions_description">Point the camera at the booking QR code. The booking will be automatically completed when scanned.</string>
 </resources>

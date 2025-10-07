@@ -31,12 +31,23 @@ class AuthRepository(
             if (result.isSuccess()) {
                 val loginResponse = result.getDataOrNull()
                 if (loginResponse != null) {
-                    // Save authentication data to preferences
+                    // Save authentication data to preferences first
                     prefs.saveAuthData(
                         loginResponse.token,
                         loginResponse.role,
                         loginResponse.nic ?: ""
                     )
+                    
+                    // Extract name from JWT token and update preferences
+                    val name = prefs.extractNameFromToken()
+                    if (name.isNotEmpty()) {
+                        prefs.saveAuthData(
+                            loginResponse.token,
+                            loginResponse.role,
+                            loginResponse.nic ?: "",
+                            name
+                        )
+                    }
                     
                     // If owner, save to local database
                     if (loginResponse.role == "Owner" && loginResponse.nic != null) {
@@ -63,12 +74,23 @@ class AuthRepository(
                 if (registerResponse?.data != null) {
                     val loginData = registerResponse.data
                     
-                    // Save authentication data to preferences
+                    // Save authentication data to preferences first
                     prefs.saveAuthData(
                         loginData.token,
                         loginData.role,
                         loginData.nic ?: ""
                     )
+                    
+                    // Extract name from JWT token and update preferences
+                    val name = prefs.extractNameFromToken()
+                    if (name.isNotEmpty()) {
+                        prefs.saveAuthData(
+                            loginData.token,
+                            loginData.role,
+                            loginData.nic ?: "",
+                            name
+                        )
+                    }
                     
                     // Save owner to local database
                     if (loginData.nic != null) {

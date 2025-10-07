@@ -53,55 +53,97 @@ class OwnerProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_owner_profile)
         
-        initializeComponents()
-        setupUI()
-        setupClickListeners()
-        loadProfile()
+        try {
+            initializeComponents()
+            setupUI()
+            setupClickListeners()
+            loadProfile()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Profile page initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerApi = OwnerApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
-        ownerRepository = OwnerRepository(ownerApi, ownerDao)
-        
-        // Initialize UI components
-        etNic = findViewById(R.id.et_nic)
-        etName = findViewById(R.id.et_name)
-        etEmail = findViewById(R.id.et_email)
-        etPhone = findViewById(R.id.et_phone)
-        btnUpdate = findViewById(R.id.btn_update)
-        btnDeactivate = findViewById(R.id.btn_deactivate)
-        loadingView = findViewById(R.id.loading_view)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val authApi = AuthApi(apiClient)
+            val ownerApi = OwnerApi(apiClient)
+            
+            // Safely initialize database helper
+            val dbHelper = try {
+                App.instance.dbHelper
+            } catch (e: Exception) {
+                // Fallback: create a new instance if App.instance is not ready
+                com.evcharge.mobile.data.db.UserDbHelper(this)
+            }
+            
+            val ownerDao = OwnerDao(dbHelper)
+            
+            authRepository = AuthRepository(authApi, ownerDao, prefs)
+            ownerRepository = OwnerRepository(ownerApi, ownerDao)
+            
+            // Initialize UI components
+            etNic = findViewById(R.id.et_nic)
+            etName = findViewById(R.id.et_name)
+            etEmail = findViewById(R.id.et_email)
+            etPhone = findViewById(R.id.et_phone)
+            btnUpdate = findViewById(R.id.btn_update)
+            btnDeactivate = findViewById(R.id.btn_deactivate)
+            loadingView = findViewById(R.id.loading_view)
+        } catch (e: Exception) {
+            Toasts.showError(this, "Profile initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Profile"
-        
-        // Set NIC as non-editable
-        etNic.isEnabled = false
+        try {
+            // Set up toolbar with error handling for missing toolbar
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+                supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                supportActionBar?.title = "Profile"
+            } catch (e: Exception) {
+                // Handle missing toolbar gracefully
+                Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
+            }
+            
+            // Set NIC as non-editable
+            etNic.isEnabled = false
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupClickListeners() {
-        // Update button
-        btnUpdate.setOnClickListener {
-            if (isEditing) {
-                updateProfile()
-            } else {
-                enableEditing()
+        try {
+            // Update button
+            btnUpdate.setOnClickListener {
+                try {
+                    if (isEditing) {
+                        updateProfile()
+                    } else {
+                        enableEditing()
+                    }
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Update action failed: ${e.message}")
+                }
             }
-        }
-        
-        // Deactivate button
-        btnDeactivate.setOnClickListener {
-            showDeactivateConfirmation()
+            
+            // Deactivate button
+            btnDeactivate.setOnClickListener {
+                try {
+                    showDeactivateConfirmation()
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Deactivate action failed: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
+            throw e
         }
     }
     

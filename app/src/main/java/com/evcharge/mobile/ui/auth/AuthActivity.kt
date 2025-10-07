@@ -25,6 +25,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Authentication activity for login
@@ -52,59 +54,103 @@ class AuthActivity : AppCompatActivity() {
         setupUI()
         setupClickListeners()
         
+        // Test backend connectivity (safely)
+        try {
+            testSimpleConnectivity()
+        } catch (e: Exception) {
+            // Don't crash the app if connectivity test fails
+            android.util.Log.w("AuthActivity", "Connectivity test failed: ${e.message}")
+        }
+        
         // Check if user is already logged in
-        if (prefs.isLoggedIn()) {
-            navigateToDashboard()
+        try {
+            if (prefs.isLoggedIn()) {
+                // Navigate to dashboard without making API calls immediately
+                navigateToDashboard()
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AuthActivity", "Navigation check failed: ${e.message}")
         }
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val authApi = AuthApi(apiClient)
+            
+            // Safely initialize database helper
+            val dbHelper = try {
+                App.instance.dbHelper
+            } catch (e: Exception) {
+                // Fallback: create a new instance if App.instance is not ready
+                com.evcharge.mobile.data.db.UserDbHelper(this)
+            }
+            
+            val ownerDao = OwnerDao(dbHelper)
+            authRepository = AuthRepository(authApi, ownerDao, prefs)
+        } catch (e: Exception) {
+            Toasts.showError(this, "Initialization failed: ${e.message}")
+            finish()
+        }
         
         // Initialize UI components
-        userTypeToggle = findViewById(R.id.user_type_toggle)
-        etUsername = findViewById(R.id.et_username)
-        etPassword = findViewById(R.id.et_password)
-        btnLogin = findViewById(R.id.btn_login)
-        btnRegister = findViewById(R.id.btn_register)
-        btnFakeLogin = findViewById(R.id.btn_fake_login)
+        try {
+            userTypeToggle = findViewById(R.id.user_type_toggle)
+            etUsername = findViewById(R.id.et_username)
+            etPassword = findViewById(R.id.et_password)
+            btnLogin = findViewById(R.id.btn_login)
+            btnRegister = findViewById(R.id.btn_register)
+            btnFakeLogin = findViewById(R.id.btn_fake_login)
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun setupUI() {
-        // Set default selection
-        userTypeToggle.check(R.id.btn_owner)
-        
-        // Show debug login in debug builds
-        if (BuildConfig.DEBUG) {
-            findViewById<com.google.android.material.card.MaterialCardView>(R.id.debug_card).visibility = android.view.View.VISIBLE
+        try {
+            // Set default selection
+            userTypeToggle.check(R.id.btn_owner)
+            
+            // Show debug login in debug builds
+            if (BuildConfig.DEBUG) {
+                findViewById<com.google.android.material.card.MaterialCardView>(R.id.debug_card).visibility = android.view.View.VISIBLE
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
         }
     }
     
     private fun setupClickListeners() {
-        // User type toggle
-        userTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                isOwner = checkedId == R.id.btn_owner
+        try {
+            // User type toggle
+            userTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+                if (isChecked) {
+                    isOwner = checkedId == R.id.btn_owner
+                }
             }
-        }
-        
-        // Login button
-        btnLogin.setOnClickListener {
-            performLogin()
-        }
-        
-        // Register button
-        btnRegister.setOnClickListener {
-            startActivity(Intent(this, RegisterActivity::class.java))
-        }
-        
-        // Fake login button (debug only)
-        btnFakeLogin.setOnClickListener {
-            fillDemoData()
+            
+            // Login button
+            btnLogin.setOnClickListener {
+                performLogin()
+            }
+            
+            // Register button
+            btnRegister.setOnClickListener {
+                try {
+                    startActivity(Intent(this, RegisterActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open registration: ${e.message}")
+                }
+            }
+            
+            // Fake login button (debug only)
+            btnFakeLogin.setOnClickListener {
+                fillDemoData()
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
         }
     }
     
@@ -129,55 +175,122 @@ class AuthActivity : AppCompatActivity() {
         
         val request = LoginRequest(username, password)
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
+                withContext(Dispatchers.Main) {
+                    Toasts.showInfo(this@AuthActivity, "Attempting login with: $username")
+                }
                 val result = authRepository.login(request)
                 
                 if (result.isSuccess()) {
                     val loginResponse = result.getDataOrNull()
                     if (loginResponse != null) {
                         // Check if account is deactivated (for owners)
-                        if (isOwner && loginResponse.role == "Owner") {
+                        if (isOwner && (loginResponse.role == "EVOwner" || loginResponse.role == "Owner")) {
                             val statusResult = authRepository.checkAccountStatus(loginResponse.nic ?: "")
                             if (statusResult.isSuccess()) {
                                 val isActive = statusResult.getDataOrNull() ?: true
                                 if (!isActive) {
-                                    Toasts.showError(this@AuthActivity, "Your account is deactivated. Contact Backoffice for reactivation.")
+                                    withContext(Dispatchers.Main) {
+                                        Toasts.showError(this@AuthActivity, "Your account is deactivated. Contact Backoffice for reactivation.")
+                                    }
                                     return@launch
                                 }
                             }
                         }
                         
-                        Toasts.showSuccess(this@AuthActivity, "Login successful")
-                        navigateToDashboard()
+                        withContext(Dispatchers.Main) {
+                            Toasts.showSuccess(this@AuthActivity, "Login successful")
+                            // Debug: Show role information
+                            Toasts.showInfo(this@AuthActivity, "Role: ${loginResponse.role}, NIC: ${loginResponse.nic}")
+                            navigateToDashboard()
+                        }
                     }
                 } else {
                     val error = result.getErrorOrNull()
                     val message = error?.message ?: "Login failed"
-                    Toasts.showError(this@AuthActivity, message)
+                    withContext(Dispatchers.Main) {
+                        Toasts.showError(this@AuthActivity, "Login failed: $message")
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@AuthActivity, "Login failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toasts.showError(this@AuthActivity, "Login exception: ${e.javaClass.simpleName} - ${e.message}")
+                }
             } finally {
-                // Reset button
-                btnLogin.isEnabled = true
-                btnLogin.text = getString(R.string.login_button)
+                withContext(Dispatchers.Main) {
+                    // Reset button
+                    btnLogin.isEnabled = true
+                    btnLogin.text = getString(R.string.login_button)
+                }
             }
         }
     }
     
     private fun navigateToDashboard() {
-        val intent = if (prefs.isOwner()) {
-            Intent(this, OwnerDashboardActivity::class.java)
-        } else {
-            Intent(this, OperatorHomeActivity::class.java)
+        try {
+            val role = prefs.getRole()
+            val isOwner = prefs.isOwner()
+            Toasts.showInfo(this, "Navigating - Role: $role, IsOwner: $isOwner")
+            
+            val intent = if (isOwner) {
+                Intent(this, OwnerDashboardActivity::class.java)
+            } else {
+                Intent(this, OperatorHomeActivity::class.java)
+            }
+            startActivity(intent)
+            finish()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Navigation failed: ${e.message}")
+            // Fallback: try to navigate to owner dashboard
+            try {
+                startActivity(Intent(this, OwnerDashboardActivity::class.java))
+                finish()
+            } catch (e2: Exception) {
+                Toasts.showError(this, "Fallback navigation also failed: ${e2.message}")
+            }
         }
-        startActivity(intent)
-        finish()
     }
     
     private fun fillDemoData() {
         etUsername.setText("123456789V")
-        etPassword.setText("password123")
+        etPassword.setText("Password123")
+    }
+    
+    private fun testSimpleConnectivity() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Show debug info about the BASE_URL being used
+                withContext(Dispatchers.Main) {
+                    Toasts.showInfo(this@AuthActivity, "Testing: ${BuildConfig.BASE_URL}")
+                }
+                
+                // Test basic HTTP connectivity using OkHttp directly
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                
+                val request = okhttp3.Request.Builder()
+                    .url("${BuildConfig.BASE_URL}/swagger")
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    withContext(Dispatchers.Main) {
+                        Toasts.showSuccess(this@AuthActivity, "✓ Backend connected successfully")
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toasts.showWarning(this@AuthActivity, "⚠ Backend responded with code: ${response.code}")
+                    }
+                }
+                response.close()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toasts.showError(this@AuthActivity, "✗ Connection failed: ${e.javaClass.simpleName}")
+                }
+            }
+        }
     }
 }

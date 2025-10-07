@@ -64,62 +64,126 @@ class OwnerDashboardActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val authApi = AuthApi(apiClient)
-        val bookingApi = BookingApi(apiClient)
-        val ownerApi = OwnerApi(apiClient)
-        val ownerDao = OwnerDao(App.instance.dbHelper)
-        
-        authRepository = AuthRepository(authApi, ownerDao, prefs)
-        bookingRepository = BookingRepository(bookingApi)
-        ownerRepository = OwnerRepository(ownerApi, ownerDao)
-        
-        // Initialize UI components
-        tvWelcome = findViewById(R.id.tv_welcome)
-        tvOwnerName = findViewById(R.id.tv_owner_name)
-        tvPendingCount = findViewById(R.id.tv_pending_count)
-        tvApprovedCount = findViewById(R.id.tv_approved_count)
-        btnNewReservation = findViewById(R.id.btn_new_reservation)
-        btnMyBookings = findViewById(R.id.btn_my_bookings)
-        btnProfile = findViewById(R.id.btn_profile)
-        btnViewMap = findViewById(R.id.btn_view_map)
-        loadingView = findViewById(R.id.loading_view)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val authApi = AuthApi(apiClient)
+            val bookingApi = BookingApi(apiClient)
+            val ownerApi = OwnerApi(apiClient)
+            
+            // Safely initialize database helper
+            val dbHelper = try {
+                App.instance.dbHelper
+            } catch (e: Exception) {
+                // Fallback: create a new instance if App.instance is not ready
+                com.evcharge.mobile.data.db.UserDbHelper(this)
+            }
+            
+            val ownerDao = OwnerDao(dbHelper)
+            
+            authRepository = AuthRepository(authApi, ownerDao, prefs)
+            bookingRepository = BookingRepository(bookingApi)
+            ownerRepository = OwnerRepository(ownerApi, ownerDao)
+            
+            // Initialize UI components
+            tvWelcome = findViewById(R.id.tv_welcome)
+            tvOwnerName = findViewById(R.id.tv_owner_name)
+            tvPendingCount = findViewById(R.id.tv_pending_count)
+            tvApprovedCount = findViewById(R.id.tv_approved_count)
+            btnNewReservation = findViewById(R.id.btn_new_reservation)
+            btnMyBookings = findViewById(R.id.btn_my_bookings)
+            btnProfile = findViewById(R.id.btn_profile)
+            btnViewMap = findViewById(R.id.btn_view_map)
+            loadingView = findViewById(R.id.loading_view)
+        } catch (e: Exception) {
+            Toasts.showError(this, "Dashboard initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        
-        // Load owner name
-        val ownerNic = prefs.getNIC()
-        val localOwner = ownerRepository.getLocalOwner(ownerNic)
-        if (localOwner != null && localOwner.name.isNotEmpty()) {
-            tvOwnerName.text = localOwner.name
-        } else {
-            tvOwnerName.text = "EV Owner"
+        try {
+            // Set welcome message with user name and NIC (similar to React frontend)
+            val userName = prefs.getName()
+            val userNIC = prefs.getNIC()
+            val userRole = prefs.getRole()
+            
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userName.isNotEmpty()) {
+                tvWelcome.text = "Hello, $userName!"
+            } else if (userNIC.isNotEmpty()) {
+                tvWelcome.text = "Hello, EV Owner!"
+            } else {
+                tvWelcome.text = "Hello, EV Owner!"
+            }
+            
+            // Set owner name and NIC (similar to React: username/name and (role))
+            if (userName.isNotEmpty() && userNIC.isNotEmpty()) {
+                tvOwnerName.text = "$userName ($userNIC)"
+            } else if (userName.isNotEmpty()) {
+                tvOwnerName.text = userName
+            } else if (userNIC.isNotEmpty()) {
+                tvOwnerName.text = "NIC: $userNIC"
+            } else {
+                tvOwnerName.text = "EV Owner"
+            }
+            
+            // Set up toolbar safely
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+            } catch (e: Exception) {
+                // If toolbar setup fails, continue without it
+                android.util.Log.w("OwnerDashboardActivity", "Toolbar setup failed: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
         }
     }
     
     private fun setupClickListeners() {
-        // New reservation button
-        btnNewReservation.setOnClickListener {
-            startActivity(Intent(this, BookingFormActivity::class.java))
-        }
-        
-        // My bookings button
-        btnMyBookings.setOnClickListener {
-            startActivity(Intent(this, BookingListActivity::class.java))
-        }
-        
-        // Profile button
-        btnProfile.setOnClickListener {
-            startActivity(Intent(this, OwnerProfileActivity::class.java))
-        }
-        
-        // View map button
-        btnViewMap.setOnClickListener {
-            startActivity(Intent(this, StationMapActivity::class.java))
+        try {
+            // New reservation button
+            btnNewReservation.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Opening New Reservation...")
+                    startActivity(Intent(this, BookingFormActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open New Reservation: ${e.message}")
+                }
+            }
+            
+            // My bookings button
+            btnMyBookings.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Opening My Bookings...")
+                    startActivity(Intent(this, BookingListActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open My Bookings: ${e.message}")
+                }
+            }
+            
+            // Profile button
+            btnProfile.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Opening Profile...")
+                    startActivity(Intent(this, OwnerProfileActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open Profile: ${e.message}")
+                }
+            }
+            
+            // View map button
+            btnViewMap.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Opening Stations Map...")
+                    startActivity(Intent(this, StationMapActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open Stations Map: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
         }
     }
     
@@ -138,10 +202,23 @@ class OwnerDashboardActivity : AppCompatActivity() {
                     updateDashboardStats(stats)
                 } else {
                     val error = result.getErrorOrNull()
-                    Toasts.showError(this@OwnerDashboardActivity, error?.message ?: "Failed to load dashboard")
+                    val errorMessage = error?.message ?: "Failed to load dashboard"
+                    
+                    // Check if it's a network error and show appropriate message
+                    if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
+                        // Only show warning once, not every time
+                        android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode.")
+                        // Set default values for offline mode
+                        updateDashboardStats(DashboardStats())
+                    } else {
+                        Toasts.showError(this@OwnerDashboardActivity, errorMessage)
+                    }
                 }
             } catch (e: Exception) {
-                Toasts.showError(this@OwnerDashboardActivity, "Failed to load dashboard: ${e.message}")
+                // Only log the error, don't show intrusive toast
+                android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode: ${e.message}")
+                // Set default values for offline mode
+                updateDashboardStats(DashboardStats())
             } finally {
                 loadingView.hide()
             }

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- Background circle -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M24,24m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    
+    <!-- EV Charging icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,8C15.16,8 8,15.16 8,24s7.16,16 16,16s16,-7.16 16,-16S32.84,8 24,8zM24,36c-6.63,0 -12,-5.37 -12,-12s5.37,-12 12,-12s12,5.37 12,12S30.63,36 24,36z"/>
+    
+    <!-- Charging bolt -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,16l-4,8h3l-1,4l8,-8h-3l1,-4L20,16z"/>
+</vector>

@@ -14,6 +14,7 @@ class Prefs(context: Context) {
         private const val KEY_TOKEN = "token"
         private const val KEY_ROLE = "role"
         private const val KEY_NIC = "nic"
+        private const val KEY_NAME = "name"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
     }
     
@@ -22,11 +23,12 @@ class Prefs(context: Context) {
     /**
      * Save authentication data
      */
-    fun saveAuthData(token: String, role: String, nic: String) {
+    fun saveAuthData(token: String, role: String, nic: String, name: String = "") {
         prefs.edit().apply {
             putString(KEY_TOKEN, token)
             putString(KEY_ROLE, role)
             putString(KEY_NIC, nic)
+            putString(KEY_NAME, name)
             putBoolean(KEY_IS_LOGGED_IN, true)
             apply()
         }
@@ -40,6 +42,7 @@ class Prefs(context: Context) {
             put("token", getToken())
             put("role", getRole())
             put("nic", getNIC())
+            put("name", getName())
         }
     }
     
@@ -57,6 +60,11 @@ class Prefs(context: Context) {
      * Get user NIC
      */
     fun getNIC(): String = prefs.getString(KEY_NIC, "") ?: ""
+    
+    /**
+     * Get user name
+     */
+    fun getName(): String = prefs.getString(KEY_NAME, "") ?: ""
     
     /**
      * Check if user is logged in
@@ -80,10 +88,35 @@ class Prefs(context: Context) {
     /**
      * Check if user is owner
      */
-    fun isOwner(): Boolean = getRole() == "Owner"
+    fun isOwner(): Boolean = getRole() == "EVOwner"
     
     /**
      * Check if user is operator
      */
     fun isOperator(): Boolean = getRole() == "Operator"
+    
+    /**
+     * Extract name from JWT token
+     */
+    fun extractNameFromToken(): String {
+        val token = getToken()
+        if (token.isEmpty()) return ""
+        
+        try {
+            // JWT tokens have 3 parts separated by dots
+            val parts = token.split(".")
+            if (parts.size != 3) return ""
+            
+            // Decode the payload (second part)
+            val payload = parts[1]
+            val decodedBytes = android.util.Base64.decode(payload, android.util.Base64.URL_SAFE)
+            val payloadJson = String(decodedBytes)
+            val jsonObject = JSONObject(payloadJson)
+            
+            // Extract name from the token
+            return jsonObject.optString("name", "")
+        } catch (e: Exception) {
+            return ""
+        }
+    }
 }

@@ -49,59 +49,89 @@ class BookingListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_booking_list)
         
-        initializeComponents()
-        setupUI()
-        setupClickListeners()
-        loadBookings()
+        try {
+            initializeComponents()
+            setupUI()
+            setupClickListeners()
+            loadBookings()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Booking list initialization failed: ${e.message}")
+            finish()
+        }
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
-        val apiClient = ApiClient(prefs)
-        val bookingApi = BookingApi(apiClient)
-        bookingRepository = BookingRepository(bookingApi)
-        
-        // Initialize UI components
-        tabLayout = findViewById(R.id.tab_layout)
-        recyclerView = findViewById(R.id.recycler_view)
-        emptyView = findViewById(R.id.empty_view)
-        fabNewBooking = findViewById(R.id.fab_new_booking)
-        loadingView = findViewById(R.id.loading_view)
-        
-        // Setup adapter
-        adapter = BookingAdapter { booking ->
-            openBookingDetail(booking)
+        try {
+            prefs = Prefs(this)
+            val apiClient = ApiClient(prefs)
+            val bookingApi = BookingApi(apiClient)
+            bookingRepository = BookingRepository(bookingApi)
+            
+            // Initialize UI components
+            tabLayout = findViewById(R.id.tab_layout)
+            recyclerView = findViewById(R.id.recycler_view)
+            emptyView = findViewById(R.id.empty_view)
+            fabNewBooking = findViewById(R.id.fab_new_booking)
+            loadingView = findViewById(R.id.loading_view)
+            
+            // Setup adapter
+            adapter = BookingAdapter { booking ->
+                openBookingDetail(booking)
+            }
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            recyclerView.adapter = adapter
+        } catch (e: Exception) {
+            Toasts.showError(this, "Component initialization failed: ${e.message}")
+            throw e
         }
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = adapter
     }
     
     private fun setupUI() {
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "My Bookings"
-        
-        // Setup tabs
-        tabLayout.addTab(tabLayout.newTab().setText("Upcoming"))
-        tabLayout.addTab(tabLayout.newTab().setText("History"))
+        try {
+            // Set up toolbar with error handling for action bar conflict
+            try {
+                setSupportActionBar(findViewById(R.id.toolbar))
+                supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                supportActionBar?.title = "My Bookings"
+            } catch (e: Exception) {
+                // Handle action bar conflict gracefully
+                Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
+            }
+            
+            // Setup tabs
+            tabLayout.addTab(tabLayout.newTab().setText("Upcoming"))
+            tabLayout.addTab(tabLayout.newTab().setText("History"))
+        } catch (e: Exception) {
+            Toasts.showError(this, "UI setup failed: ${e.message}")
+            throw e
+        }
     }
     
     private fun setupClickListeners() {
-        // Tab selection
-        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                currentTab = tab?.position ?: 0
-                updateDisplay()
-            }
+        try {
+            // Tab selection
+            tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    currentTab = tab?.position ?: 0
+                    updateDisplay()
+                }
+                
+                override fun onTabUnselected(tab: TabLayout.Tab?) {}
+                override fun onTabReselected(tab: TabLayout.Tab?) {}
+            })
             
-            override fun onTabUnselected(tab: TabLayout.Tab?) {}
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
-        })
-        
-        // New booking FAB
-        fabNewBooking.setOnClickListener {
-            startActivity(Intent(this, BookingFormActivity::class.java))
+            // New booking FAB
+            fabNewBooking.setOnClickListener {
+                try {
+                    Toasts.showInfo(this, "Opening New Booking...")
+                    startActivity(Intent(this, BookingFormActivity::class.java))
+                } catch (e: Exception) {
+                    Toasts.showError(this, "Failed to open New Booking: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
+            throw e
         }
     }
     

@@ -34,13 +34,18 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Select Station"
+                    android:hint="@string/station"
                     app:startIconDrawable="@drawable/ic_location_on">
 
-                    <Spinner
-                        android:id="@+id/spinner_station"
+                    <AutoCompleteTextView
+                        android:id="@+id/et_station"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="48dp"
+                        android:minHeight="48dp"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:padding="12dp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -64,7 +69,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Date &amp; Time"
+                    android:text="@string/date_time"
                     android:textAppearance="@style/TextAppearance.Title"
                     android:layout_marginBottom="12dp" />
 
@@ -86,10 +91,12 @@
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_start_date"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="48dp"
+                            android:minHeight="48dp"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true" />
+                            android:clickable="true"
+                            android:padding="12dp" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -98,16 +105,18 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
-                        android:hint="Time"
+                        android:hint="@string/start_time"
                         app:startIconDrawable="@drawable/ic_access_time">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_start_time"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="48dp"
+                            android:minHeight="48dp"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true" />
+                            android:clickable="true"
+                            android:padding="12dp" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -130,10 +139,12 @@
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_end_date"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="48dp"
+                            android:minHeight="48dp"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true" />
+                            android:clickable="true"
+                            android:padding="12dp" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -142,16 +153,18 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
-                        android:hint="Time"
+                        android:hint="@string/time"
                         app:startIconDrawable="@drawable/ic_access_time">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_end_time"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="48dp"
+                            android:minHeight="48dp"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true" />
+                            android:clickable="true"
+                            android:padding="12dp" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -167,15 +180,16 @@
             style="@style/PrimaryButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
+            android:layout_marginHorizontal="16dp"
             android:text="@string/create_booking" />
 
-    </LinearLayout>
+        <!-- Loading View -->
+        <com.evcharge.mobile.ui.widgets.LoadingView
+            android:id="@+id/loading_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-    <!-- Loading View -->
-    <com.evcharge.mobile.ui.widgets.LoadingView
-        android:id="@+id/loading_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
+    </LinearLayout>
 
 </ScrollView>
