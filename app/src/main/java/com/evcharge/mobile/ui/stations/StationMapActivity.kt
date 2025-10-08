@@ -206,8 +206,8 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         val statusText = when (station.status) {
             com.evcharge.mobile.data.dto.StationStatus.AVAILABLE -> "Available"
             com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> "Occupied"
-            com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Maintenance"
             com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> "Offline"
+            com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Maintenance"
         }
         
         val message = """
@@ -256,10 +256,6 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
                 loadNearbyStations()
                 true
             }
-            R.id.action_filter -> {
-                showFilterDialog()
-                true
-            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -267,7 +263,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
     private fun showFilterDialog() {
         val statuses = arrayOf("All", "Available", "Occupied", "Maintenance", "Offline")
         var selectedIndex = 0
-        
+
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Filter Stations")
             .setSingleChoiceItems(statuses, 0) { _, which ->

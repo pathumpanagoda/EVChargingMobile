@@ -26,7 +26,7 @@ import com.evcharge.mobile.ui.auth.AuthActivity
 import com.evcharge.mobile.ui.bookings.BookingFormActivity
 import com.evcharge.mobile.ui.bookings.BookingListActivity
 import com.evcharge.mobile.ui.owners.OwnerProfileActivity
-import com.evcharge.mobile.ui.stations.StationMapActivity
+import com.evcharge.mobile.ui.stations.DummyMapActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
@@ -201,11 +201,11 @@ class OwnerDashboardActivity : AppCompatActivity() {
                 try {
                     android.util.Log.d("OwnerDashboard", "View map button clicked")
                     Toasts.showInfo(this, "Opening station map...")
-                    val intent = Intent(this, StationMapActivity::class.java)
+                    val intent = Intent(this, DummyMapActivity::class.java)
                     startActivity(intent)
-                    android.util.Log.d("OwnerDashboard", "StationMapActivity started successfully")
+                    android.util.Log.d("OwnerDashboard", "DummyMapActivity started successfully")
                 } catch (e: Exception) {
-                    android.util.Log.e("OwnerDashboard", "Failed to start StationMapActivity", e)
+                    android.util.Log.e("OwnerDashboard", "Failed to start DummyMapActivity", e)
                     Toasts.showError(this, "Failed to open map: ${e.message}")
                 }
             }

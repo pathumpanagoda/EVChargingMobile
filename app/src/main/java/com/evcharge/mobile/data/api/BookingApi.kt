@@ -99,9 +99,7 @@ class BookingApi(private val apiClient: ApiClient) {
     suspend fun updateBooking(bookingId: String, request: BookingUpdateRequest): Result<Booking> {
         return try {
             val body = JSONObject().apply {
-                if (request.stationId != null) put("stationId", request.stationId)
-                if (request.startTime != null) put("startTime", request.startTime)
-                if (request.endTime != null) put("endTime", request.endTime)
+                put("ReservationDateTime", request.reservationDateTime)  // Backend expects ReservationDateTime (capital R)
             }
             
             val response = apiClient.put("/api/booking/$bookingId", body)

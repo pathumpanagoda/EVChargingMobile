@@ -72,6 +72,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.bookings.BookingModifyActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.stations.StationMapActivity"
             android:exported="false" />
 
@@ -81,6 +85,10 @@
 
         <activity
             android:name=".ui.qr.QrScanActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.stations.DummyMapActivity"
             android:exported="false" />
 
     </application>

@@ -5,13 +5,13 @@
     <item
         android:id="@+id/action_refresh"
         android:icon="@drawable/ic_refresh"
-        android:title="@string/retry"
+        android:title="Refresh"
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_filter"
-        android:icon="@drawable/ic_filter_list"
-        android:title="Filter"
+        android:id="@+id/action_my_location"
+        android:icon="@drawable/ic_my_location"
+        android:title="My Location"
         app:showAsAction="ifRoom" />
 
 </menu>

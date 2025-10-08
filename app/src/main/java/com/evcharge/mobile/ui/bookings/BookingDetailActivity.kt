@@ -31,6 +31,10 @@ import kotlinx.coroutines.launch
  */
 class BookingDetailActivity : AppCompatActivity() {
     
+    companion object {
+        private const val MODIFY_BOOKING_REQUEST_CODE = 1001
+    }
+    
     private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
     private lateinit var stationRepository: StationRepository
@@ -94,21 +98,27 @@ class BookingDetailActivity : AppCompatActivity() {
     }
     
     private fun setupClickListeners() {
+        android.util.Log.d("BookingDetail", "Setting up click listeners")
+        
         // Modify button
         btnModify.setOnClickListener {
-            // TODO: Implement modify booking
-            Toasts.showInfo(this, "Modify booking feature coming soon")
+            android.util.Log.d("BookingDetail", "Modify button clicked")
+            modifyBooking()
         }
         
         // Cancel button
         btnCancel.setOnClickListener {
+            android.util.Log.d("BookingDetail", "Cancel button clicked")
             showCancelConfirmation()
         }
         
         // Show QR button
         btnShowQr.setOnClickListener {
+            android.util.Log.d("BookingDetail", "Show QR button clicked")
             showQRCode()
         }
+        
+        android.util.Log.d("BookingDetail", "Click listeners set up successfully")
     }
     
     private fun loadBooking() {
@@ -230,28 +240,36 @@ class BookingDetailActivity : AppCompatActivity() {
     private fun updateButtonVisibility() {
         val booking = this.booking ?: return
         
+        android.util.Log.d("BookingDetail", "Updating button visibility for status: ${booking.status.name}")
+        
         when (booking.status) {
             BookingStatus.PENDING -> {
+                android.util.Log.d("BookingDetail", "Setting PENDING buttons - Modify: VISIBLE, Cancel: VISIBLE, QR: GONE")
                 btnModify.visibility = android.view.View.VISIBLE
                 btnCancel.visibility = android.view.View.VISIBLE
                 btnShowQr.visibility = android.view.View.GONE
             }
             BookingStatus.APPROVED -> {
+                android.util.Log.d("BookingDetail", "Setting APPROVED buttons - Modify: GONE, Cancel: VISIBLE, QR: VISIBLE")
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.VISIBLE
                 btnShowQr.visibility = android.view.View.VISIBLE
             }
             BookingStatus.COMPLETED -> {
+                android.util.Log.d("BookingDetail", "Setting COMPLETED buttons - All GONE")
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.GONE
                 btnShowQr.visibility = android.view.View.GONE
             }
             BookingStatus.CANCELLED -> {
+                android.util.Log.d("BookingDetail", "Setting CANCELLED buttons - All GONE")
                 btnModify.visibility = android.view.View.GONE
                 btnCancel.visibility = android.view.View.GONE
                 btnShowQr.visibility = android.view.View.GONE
             }
         }
+        
+        android.util.Log.d("BookingDetail", "Button visibility - Modify: ${btnModify.visibility}, Cancel: ${btnCancel.visibility}, QR: ${btnShowQr.visibility}")
     }
     
     private fun formatDuration(startTime: Long, endTime: Long): String {
@@ -301,6 +319,42 @@ class BookingDetailActivity : AppCompatActivity() {
         }
     }
     
+    private fun modifyBooking() {
+        val booking = this.booking ?: return
+        
+        android.util.Log.d("BookingDetail", "Modify button clicked")
+        android.util.Log.d("BookingDetail", "Booking status: ${booking.status.name}")
+        android.util.Log.d("BookingDetail", "Booking start time: ${booking.startTime}")
+        android.util.Log.d("BookingDetail", "Current time: ${System.currentTimeMillis()}")
+        
+        // Check if booking can be modified (only pending bookings)
+        if (booking.status.name != "PENDING") {
+            android.util.Log.d("BookingDetail", "Booking is not PENDING, status: ${booking.status.name}")
+            Toasts.showError(this, "Only pending bookings can be modified")
+            return
+        }
+        
+        // Check if booking can be modified (12-hour rule)
+        // The rule should be: cannot modify within 12 hours of the START TIME, not creation time
+        val twelveHoursFromStartTime = booking.startTime - (12 * 60 * 60 * 1000)
+        val currentTime = System.currentTimeMillis()
+        
+        android.util.Log.d("BookingDetail", "Current time: $currentTime")
+        android.util.Log.d("BookingDetail", "Booking start time: ${booking.startTime}")
+        android.util.Log.d("BookingDetail", "12 hours before start time: $twelveHoursFromStartTime")
+        
+        if (currentTime >= twelveHoursFromStartTime) {
+            android.util.Log.d("BookingDetail", "Current time is within 12 hours of start time, cannot modify")
+            Toasts.showError(this, "Cannot modify booking within 12 hours of reservation time")
+            return
+        }
+        
+        android.util.Log.d("BookingDetail", "Opening BookingModifyActivity")
+        val intent = Intent(this, BookingModifyActivity::class.java)
+        intent.putExtra("booking", booking)
+        startActivityForResult(intent, MODIFY_BOOKING_REQUEST_CODE)
+    }
+    
     private fun showQRCode() {
         val booking = this.booking ?: return
         
@@ -316,6 +370,16 @@ class BookingDetailActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_booking_detail, menu)
         return true
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == MODIFY_BOOKING_REQUEST_CODE && resultCode == RESULT_OK) {
+            // Refresh booking details after successful modification
+            loadBooking()
+            Toasts.showSuccess(this, "Booking updated successfully")
+        }
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

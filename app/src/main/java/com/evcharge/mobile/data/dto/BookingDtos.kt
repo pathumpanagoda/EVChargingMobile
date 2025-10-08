@@ -1,5 +1,8 @@
 package com.evcharge.mobile.data.dto
 
+import android.os.Parcel
+import android.os.Parcelable
+
 /**
  * Data classes for booking API requests and responses
  */
@@ -7,11 +10,29 @@ package com.evcharge.mobile.data.dto
 /**
  * Booking status enum
  */
-enum class BookingStatus {
+enum class BookingStatus : Parcelable {
     PENDING,
     APPROVED,
     COMPLETED,
-    CANCELLED
+    CANCELLED;
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(name)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<BookingStatus> {
+        override fun createFromParcel(parcel: Parcel): BookingStatus {
+            return valueOf(parcel.readString() ?: "PENDING")
+        }
+
+        override fun newArray(size: Int): Array<BookingStatus?> {
+            return arrayOfNulls(size)
+        }
+    }
 }
 
 /**
@@ -28,7 +49,47 @@ data class Booking(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val qrCode: String? = null
-)
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readParcelable(BookingStatus::class.java.classLoader) ?: BookingStatus.PENDING,
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readString()
+    )
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(id)
+        parcel.writeString(ownerNic)
+        parcel.writeString(stationId)
+        parcel.writeString(stationName)
+        parcel.writeLong(startTime)
+        parcel.writeLong(endTime)
+        parcel.writeParcelable(status, flags)
+        parcel.writeLong(createdAt)
+        parcel.writeLong(updatedAt)
+        parcel.writeString(qrCode)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<Booking> {
+        override fun createFromParcel(parcel: Parcel): Booking {
+            return Booking(parcel)
+        }
+
+        override fun newArray(size: Int): Array<Booking?> {
+            return arrayOfNulls(size)
+        }
+    }
+}
 
 /**
  * Booking create request DTO - matches backend BookingRequest
@@ -39,12 +100,10 @@ data class BookingCreateRequest(
 )
 
 /**
- * Booking update request DTO
+ * Booking update request DTO - matches backend BookingUpdateRequest
  */
 data class BookingUpdateRequest(
-    val stationId: String? = null,
-    val startTime: Long? = null,
-    val endTime: Long? = null
+    val reservationDateTime: String  // ISO 8601 format for backend
 )
 
 /**
