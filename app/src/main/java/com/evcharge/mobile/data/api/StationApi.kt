@@ -141,13 +141,18 @@ class StationApi(private val apiClient: ApiClient) {
      * Parse station from JSON
      */
     private fun parseStation(data: JSONObject): Station {
+        // Debug logging
+        android.util.Log.d("StationApi", "Parsing station: ${data.toString()}")
+        
         // Parse location (nested in backend model)
         val locationData = data.optJSONObject("location")
         val address = locationData?.optString("address") ?: ""
         val latitude = locationData?.optDouble("latitude") ?: 0.0
         val longitude = locationData?.optDouble("longitude") ?: 0.0
         
-        // Parse station capacity and determine status
+        android.util.Log.d("StationApi", "Parsed location: $address at ($latitude, $longitude)")
+        
+        // Parse station capacity and determine status - using correct backend field names
         val totalSlots = data.optInt("totalSlots", 1)
         val availableSlots = data.optInt("availableSlots", 1)
         val isActive = data.optBoolean("isActive", true)

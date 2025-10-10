@@ -35,6 +35,8 @@ import com.evcharge.mobile.common.getDataOrNull
 import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Station map activity showing nearby charging stations
@@ -76,6 +78,11 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Charging Stations"
+        
+        // Set up Floating Action Button
+        fabMyLocation.setOnClickListener {
+            getCurrentLocation()
+        }
     }
     
     private fun setupMap() {
@@ -113,14 +120,25 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
     
     private fun getCurrentLocation() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            loadingView.show()
+            loadingView.setMessage("Getting your location...")
+            
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
                     currentLocation = location
                     val currentLatLng = LatLng(location.latitude, location.longitude)
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
-                    loadNearbyStations()
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                    // Don't call loadNearbyStations() here - it's already called in onMapReady()
+                } else {
+                    loadingView.hide()
+                    Toasts.showError(this, "Unable to get current location")
                 }
+            }.addOnFailureListener { exception ->
+                loadingView.hide()
+                Toasts.showError(this, "Failed to get location: ${exception.message}")
             }
+        } else {
+            requestLocationPermission()
         }
     }
     
@@ -130,21 +148,38 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         
         lifecycleScope.launch {
             try {
-                val result = if (currentLocation != null) {
-                    stationRepository.getNearbyStations(
-                        currentLocation!!.latitude,
-                        currentLocation!!.longitude,
-                        10.0
-                    )
-                } else {
-                    stationRepository.getAllStations()
+                val result = withContext(Dispatchers.IO) {
+                    if (currentLocation != null) {
+                        // Try nearby stations first, fallback to all stations if empty
+                        val nearbyResult = stationRepository.getNearbyStations(
+                            currentLocation!!.latitude,
+                            currentLocation!!.longitude,
+                            10.0
+                        )
+                        if (nearbyResult.isSuccess()) {
+                            val nearbyStations = nearbyResult.getDataOrNull() ?: emptyList()
+                            if (nearbyStations.isNotEmpty()) {
+                                nearbyResult
+                            } else {
+                                // If no nearby stations, get all stations
+                                stationRepository.getAllStations()
+                            }
+                        } else {
+                            // If nearby fails, get all stations
+                            stationRepository.getAllStations()
+                        }
+                    } else {
+                        stationRepository.getAllStations()
+                    }
                 }
                 
                 if (result.isSuccess()) {
                     stations = result.getDataOrNull() ?: emptyList()
+                    android.util.Log.d("StationMap", "Loaded ${stations.size} stations from API")
                     updateMapWithStations()
                 } else {
                     val error = result.getErrorOrNull()
+                    android.util.Log.e("StationMap", "Failed to load stations: ${error?.message}")
                     Toasts.showError(this@StationMapActivity, error?.message ?: "Failed to load stations")
                 }
             } catch (e: Exception) {
@@ -158,7 +193,11 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
     private fun updateMapWithStations() {
         map.clear()
         
-        stations.forEach { station ->
+        // Debug logging
+        android.util.Log.d("StationMap", "Updating map with ${stations.size} stations")
+        stations.forEachIndexed { index, station ->
+            android.util.Log.d("StationMap", "Station $index: ${station.name} at (${station.latitude}, ${station.longitude})")
+            
             val position = LatLng(station.latitude, station.longitude)
             val marker = map.addMarker(
                 MarkerOptions()

@@ -74,7 +74,8 @@
 
         <activity
             android:name=".ui.stations.StationMapActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
 
         <activity
             android:name=".ui.qr.QrCodeActivity"
