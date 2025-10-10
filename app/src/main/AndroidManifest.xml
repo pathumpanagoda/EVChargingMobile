@@ -87,9 +87,6 @@
             android:name=".ui.qr.QrScanActivity"
             android:exported="false" />
 
-        <activity
-            android:name=".ui.stations.DummyMapActivity"
-            android:exported="false" />
 
     </application>
 
