@@ -173,10 +173,9 @@ class BookingApi(private val apiClient: ApiClient) {
                 val data = response.optJSONObject("data")
                 if (data != null) {
                     val stats = DashboardStats(
-                        pendingCount = data.optInt("pendingCount", 0),
-                        approvedCount = data.optInt("approvedCount", 0),
-                        completedCount = data.optInt("completedCount", 0),
-                        cancelledCount = data.optInt("cancelledCount", 0)
+                        pendingReservations = data.optInt("pendingReservations", 0),
+                        approvedFutureReservations = data.optInt("approvedFutureReservations", 0),
+                        totalBookings = data.optInt("totalBookings", 0)
                     )
                     Result.Success(stats)
                 } else {

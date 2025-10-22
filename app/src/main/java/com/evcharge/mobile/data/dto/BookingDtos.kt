@@ -71,10 +71,9 @@ data class BookingListResponse(
  * Dashboard stats DTO
  */
 data class DashboardStats(
-    val pendingCount: Int = 0,
-    val approvedCount: Int = 0,
-    val completedCount: Int = 0,
-    val cancelledCount: Int = 0
+    val pendingReservations: Int = 0,
+    val approvedFutureReservations: Int = 0,
+    val totalBookings: Int = 0
 )
 
 /**

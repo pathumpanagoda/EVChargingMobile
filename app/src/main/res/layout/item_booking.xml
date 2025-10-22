@@ -25,15 +25,22 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Station Name"
-                android:textAppearance="@style/TextAppearance.Title"
-                android:textColor="@color/text_primary" />
+                android:textAppearance="@style/TextAppearance.Body"
+                android:textColor="@color/text_primary"
+                android:maxLines="2"
+                android:ellipsize="end" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/tv_status"
-                style="@style/StatusBadge.Pending"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PENDING" />
+                android:text="PENDING"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:minWidth="80dp"
+                android:gravity="center"
+                app:chipMinHeight="32dp"
+                app:chipCornerRadius="16dp" />
 
         </LinearLayout>
 

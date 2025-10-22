@@ -106,8 +106,8 @@ class OwnerDashboardActivity : AppCompatActivity() {
             // Set up toolbar safely
             try {
                 setSupportActionBar(findViewById(R.id.toolbar))
-            } catch (e: Exception) {
-                // If toolbar setup fails, continue without it
+            } catch (e: IllegalStateException) {
+                // Handle action bar conflict gracefully
                 android.util.Log.w("OwnerDashboardActivity", "Toolbar setup failed: ${e.message}")
             }
             
@@ -176,41 +176,52 @@ class OwnerDashboardActivity : AppCompatActivity() {
         
         val ownerNic = prefs.getNIC()
         
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val result = bookingRepository.getDashboardStats(ownerNic)
                 
-                if (result.isSuccess()) {
-                    val stats = result.getDataOrNull() ?: DashboardStats()
-                    updateDashboardStats(stats)
-                } else {
-                    val error = result.getErrorOrNull()
-                    val errorMessage = error?.message ?: "Failed to load dashboard"
-                    
-                    // Check if it's a network error and show appropriate message
-                    if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
-                        // Only show warning once, not every time
-                        android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode.")
-                        // Set default values for offline mode
-                        updateDashboardStats(DashboardStats())
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val stats = result.getDataOrNull() ?: DashboardStats()
+                        updateDashboardStats(stats)
                     } else {
-                        Toasts.showError(this@OwnerDashboardActivity, errorMessage)
+                        val error = result.getErrorOrNull()
+                        val errorMessage = error?.message ?: "Failed to load dashboard"
+                        
+                        // Check if it's a network error and show appropriate message
+                        if (errorMessage.contains("Network error") || errorMessage.contains("An unexpected error occurred")) {
+                            // Only show warning once, not every time
+                            android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode.")
+                            // Set default values for offline mode
+                            updateDashboardStats(DashboardStats())
+                        } else {
+                            Toasts.showError(this@OwnerDashboardActivity, errorMessage)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 // Only log the error, don't show intrusive toast
                 android.util.Log.w("OwnerDashboardActivity", "Backend server not available. Using offline mode: ${e.message}")
                 // Set default values for offline mode
-                updateDashboardStats(DashboardStats())
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    updateDashboardStats(DashboardStats())
+                }
             } finally {
-                loadingView.hide()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
             }
         }
     }
     
     private fun updateDashboardStats(stats: DashboardStats) {
-        tvPendingCount.text = stats.pendingCount.toString()
-        tvApprovedCount.text = stats.approvedCount.toString()
+        tvPendingCount.text = stats.pendingReservations.toString()
+        tvApprovedCount.text = stats.approvedFutureReservations.toString()
+        
+        // Show helpful message if no bookings
+        if (stats.pendingReservations == 0 && stats.approvedFutureReservations == 0) {
+            Toasts.showInfo(this, "No active bookings. Create your first reservation!")
+        }
     }
     
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

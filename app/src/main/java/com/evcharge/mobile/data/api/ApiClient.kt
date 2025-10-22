@@ -3,6 +3,8 @@ package com.evcharge.mobile.data.api
 import android.util.Log
 import com.evcharge.mobile.BuildConfig
 import com.evcharge.mobile.common.Prefs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -34,51 +36,60 @@ class ApiClient(private val prefs: Prefs) {
     /**
      * Make a POST request
      */
-    fun post(path: String, body: JSONObject): JSONObject {
+    suspend fun post(path: String, body: JSONObject): JSONObject {
         val requestBody = body.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .post(requestBody)
             .build()
         
-        return executeRequest(request)
+        return executeRequestAsync(request)
     }
     
     /**
      * Make a GET request
      */
-    fun get(path: String): JSONObject {
+    suspend fun get(path: String): JSONObject {
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .get()
             .build()
         
-        return executeRequest(request)
+        return executeRequestAsync(request)
     }
     
     /**
      * Make a PUT request
      */
-    fun put(path: String, body: JSONObject): JSONObject {
+    suspend fun put(path: String, body: JSONObject): JSONObject {
         val requestBody = body.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .put(requestBody)
             .build()
         
-        return executeRequest(request)
+        return executeRequestAsync(request)
     }
     
     /**
      * Make a DELETE request
      */
-    fun delete(path: String): JSONObject {
+    suspend fun delete(path: String): JSONObject {
         val request = Request.Builder()
             .url("$BASE_URL$path")
             .delete()
             .build()
         
-        return executeRequest(request)
+        return executeRequestAsync(request)
+    }
+    
+    /**
+     * Execute HTTP request asynchronously and return JSON response
+     */
+    private suspend fun executeRequestAsync(request: Request): JSONObject {
+        return withContext(kotlinx.coroutines.Dispatchers.IO) {
+            executeRequest(request)
+        }
     }
     
     /**

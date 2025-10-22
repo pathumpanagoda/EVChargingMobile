@@ -15,9 +15,11 @@ import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
+import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
+import com.evcharge.mobile.data.repo.StationRepository
 import com.evcharge.mobile.ui.qr.QrCodeActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
@@ -31,6 +33,7 @@ class BookingDetailActivity : AppCompatActivity() {
     
     private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
+    private lateinit var stationRepository: StationRepository
     
     // UI Components
     private lateinit var tvStationName: MaterialTextView
@@ -62,7 +65,9 @@ class BookingDetailActivity : AppCompatActivity() {
         prefs = Prefs(this)
         val apiClient = ApiClient(prefs)
         val bookingApi = BookingApi(apiClient)
+        val stationApi = StationApi(apiClient)
         bookingRepository = BookingRepository(bookingApi)
+        stationRepository = StationRepository(stationApi)
         
         // Get booking ID from intent
         bookingId = intent.getStringExtra("booking_id") ?: ""
@@ -97,8 +102,7 @@ class BookingDetailActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         // Modify button
         btnModify.setOnClickListener {
-            // TODO: Implement modify booking
-            Toasts.showInfo(this, "Modify booking feature coming soon")
+            showModifyOptions()
         }
         
         // Cancel button
@@ -155,8 +159,17 @@ class BookingDetailActivity : AppCompatActivity() {
     private fun updateUI() {
         val booking = this.booking ?: return
         
-        tvStationName.text = booking.stationName ?: "Unknown Station"
-        tvAddress.text = "Station Address" // TODO: Get actual address
+        // Display station name and ID
+        val stationDisplayName = if (!booking.stationName.isNullOrEmpty()) {
+            "${booking.stationName} (ID: ${booking.stationId.take(8)}...)"
+        } else {
+            "Station ID: ${booking.stationId.take(8)}..."
+        }
+        tvStationName.text = stationDisplayName
+        
+        // Fetch station details for address
+        fetchStationDetails(booking.stationId)
+        
         tvStartTime.text = Datex.formatToDisplay(booking.startTime)
         tvEndTime.text = Datex.formatToDisplay(booking.endTime)
         tvDuration.text = formatDuration(booking.startTime, booking.endTime)
@@ -174,6 +187,30 @@ class BookingDetailActivity : AppCompatActivity() {
         
         // Update button visibility
         updateButtonVisibility()
+    }
+    
+    private fun fetchStationDetails(stationId: String) {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val result = stationRepository.getStation(stationId)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val station = result.getDataOrNull()
+                        if (station != null) {
+                            tvAddress.text = station.address.ifEmpty { "Address not available" }
+                        } else {
+                            tvAddress.text = "Address not available"
+                        }
+                    } else {
+                        tvAddress.text = "Address not available"
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    tvAddress.text = "Address not available"
+                }
+            }
+        }
     }
     
     private fun updateButtonVisibility() {
@@ -208,6 +245,29 @@ class BookingDetailActivity : AppCompatActivity() {
         val hours = duration / (1000 * 60 * 60)
         val minutes = (duration % (1000 * 60 * 60)) / (1000 * 60)
         return "${hours}h ${minutes}m"
+    }
+    
+    private fun showModifyOptions() {
+        val booking = this.booking ?: return
+        
+        // Check if booking can be modified (12-hour rule)
+        val twelveHoursFromNow = System.currentTimeMillis() + (12 * 60 * 60 * 1000)
+        if (booking.startTime <= twelveHoursFromNow) {
+            Toasts.showWarning(this, "Bookings cannot be modified within 12 hours of start time")
+            return
+        }
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Modify Booking")
+            .setMessage("What would you like to modify?")
+            .setPositiveButton("Change Time") { _, _ ->
+                Toasts.showInfo(this, "Time modification feature coming soon")
+            }
+            .setNeutralButton("Change Station") { _, _ ->
+                Toasts.showInfo(this, "Station change feature coming soon")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
     
     private fun showCancelConfirmation() {
