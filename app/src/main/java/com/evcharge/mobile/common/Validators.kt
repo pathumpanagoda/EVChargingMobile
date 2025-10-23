@@ -98,13 +98,11 @@ object Validators {
     }
     
     /**
-     * Validate booking duration (minimum 30 minutes, maximum 8 hours)
+     * Validate booking duration (no minimum or maximum limit)
      */
     fun isValidBookingDuration(startTime: Long, endTime: Long): Boolean {
         val duration = endTime - startTime
-        val minDuration = 30 * 60 * 1000L // 30 minutes
-        val maxDuration = 8 * 60 * 60 * 1000L // 8 hours
-        return duration >= minDuration && duration <= maxDuration
+        return duration > 0 // Just ensure end time is after start time
     }
     
     /**
@@ -162,5 +160,5 @@ object Validators {
     /**
      * Get validation error message for booking duration
      */
-    fun getBookingDurationErrorMessage(): String = "Booking duration must be between 30 minutes and 8 hours."
+    fun getBookingDurationErrorMessage(): String = "End time must be after start time."
 }

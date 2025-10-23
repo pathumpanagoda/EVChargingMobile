@@ -1,5 +1,7 @@
 package com.evcharge.mobile.ui.bookings
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
@@ -18,13 +20,16 @@ import com.evcharge.mobile.data.api.BookingApi
 import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingStatus
+import com.evcharge.mobile.data.dto.BookingUpdateRequest
+import com.evcharge.mobile.data.dto.Station
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.data.repo.StationRepository
-import com.evcharge.mobile.ui.qr.QrCodeActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.launch
+import java.util.*
+import com.evcharge.mobile.ui.qr.QrCodeActivity
 
 /**
  * Booking detail activity
@@ -218,13 +223,30 @@ class BookingDetailActivity : AppCompatActivity() {
         
         when (booking.status) {
             BookingStatus.PENDING -> {
-                btnModify.visibility = android.view.View.VISIBLE
-                btnCancel.visibility = android.view.View.VISIBLE
+                // Check if booking can be modified based on 12-hour rule
+                if (canModifyBooking(booking)) {
+                    btnModify.visibility = android.view.View.VISIBLE
+                    btnModify.isEnabled = true
+                    btnCancel.visibility = android.view.View.VISIBLE
+                    btnCancel.isEnabled = true
+                } else {
+                    btnModify.visibility = android.view.View.VISIBLE
+                    btnModify.isEnabled = false
+                    btnCancel.visibility = android.view.View.VISIBLE
+                    btnCancel.isEnabled = false
+                }
                 btnShowQr.visibility = android.view.View.GONE
             }
             BookingStatus.APPROVED -> {
                 btnModify.visibility = android.view.View.GONE
-                btnCancel.visibility = android.view.View.VISIBLE
+                // Check if booking can be cancelled based on 12-hour rule
+                if (canModifyBooking(booking)) {
+                    btnCancel.visibility = android.view.View.VISIBLE
+                    btnCancel.isEnabled = true
+                } else {
+                    btnCancel.visibility = android.view.View.VISIBLE
+                    btnCancel.isEnabled = false
+                }
                 btnShowQr.visibility = android.view.View.VISIBLE
             }
             BookingStatus.COMPLETED -> {
@@ -247,12 +269,16 @@ class BookingDetailActivity : AppCompatActivity() {
         return "${hours}h ${minutes}m"
     }
     
+    private fun canModifyBooking(booking: Booking): Boolean {
+        // Use the existing Datex utility for consistent 12-hour rule validation
+        return Datex.canUpdateOrCancelBooking(booking.startTime)
+    }
+    
     private fun showModifyOptions() {
         val booking = this.booking ?: return
         
         // Check if booking can be modified (12-hour rule)
-        val twelveHoursFromNow = System.currentTimeMillis() + (12 * 60 * 60 * 1000)
-        if (booking.startTime <= twelveHoursFromNow) {
+        if (!canModifyBooking(booking)) {
             Toasts.showWarning(this, "Bookings cannot be modified within 12 hours of start time")
             return
         }
@@ -261,16 +287,150 @@ class BookingDetailActivity : AppCompatActivity() {
             .setTitle("Modify Booking")
             .setMessage("What would you like to modify?")
             .setPositiveButton("Change Time") { _, _ ->
-                Toasts.showInfo(this, "Time modification feature coming soon")
+                showTimeModificationDialog()
             }
             .setNeutralButton("Change Station") { _, _ ->
-                Toasts.showInfo(this, "Station change feature coming soon")
+                showStationModificationDialog()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
+    private fun showTimeModificationDialog() {
+        val booking = this.booking ?: return
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Change Booking Time")
+            .setMessage("Select new start time (end time will be automatically set to 2 hours later)")
+            .setPositiveButton("Select Date & Time") { _, _ ->
+                showDateTimePickerForModification()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun showDateTimePickerForModification() {
+        val booking = this.booking ?: return
+        
+        // Show date picker first
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = booking.startTime
+        
+        val datePickerDialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                val newCalendar = Calendar.getInstance()
+                newCalendar.set(year, month, dayOfMonth)
+                newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
+                newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
+                
+                // Show time picker after date selection
+                showTimePickerForModification(newCalendar.timeInMillis)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        
+        // Set maximum date to 7 days from now
+        val maxDate = Calendar.getInstance()
+        maxDate.add(Calendar.DAY_OF_MONTH, 7)
+        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
+        
+        // Set minimum date to today
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
+        
+        datePickerDialog.show()
+    }
+    
+    private fun showTimePickerForModification(selectedDate: Long) {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = selectedDate
+        
+        TimePickerDialog(
+            this,
+            { _, hourOfDay, minute ->
+                val newCalendar = Calendar.getInstance()
+                newCalendar.timeInMillis = selectedDate
+                newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                newCalendar.set(Calendar.MINUTE, minute)
+                
+                val newStartTime = newCalendar.timeInMillis
+                val newEndTime = newStartTime + (2 * 60 * 60 * 1000L) // 2 hours later
+                
+                // Update the booking
+                updateBookingTime(newStartTime, newEndTime)
+            },
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            true
+        ).show()
+    }
+    
+    private fun updateBookingTime(newStartTime: Long, newEndTime: Long) {
+        val booking = this.booking ?: return
+        
+        loadingView.show()
+        loadingView.setMessage("Updating booking time...")
+        
+        val updateRequest = BookingUpdateRequest(
+            startTime = newStartTime
+        )
+        
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val result = bookingRepository.updateBooking(booking.id, updateRequest)
+                
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val updatedBooking = result.getDataOrNull()
+                        if (updatedBooking != null) {
+                            this@BookingDetailActivity.booking = updatedBooking
+                            updateUI()
+                            Toasts.showSuccess(this@BookingDetailActivity, "Booking time updated successfully")
+                        } else {
+                            Toasts.showError(this@BookingDetailActivity, "Failed to update booking")
+                        }
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingDetailActivity, error?.message ?: "Failed to update booking")
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingDetailActivity, "Failed to update booking: ${e.message}")
+                }
+            } finally {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
+            }
+        }
+    }
+    
+    private fun showStationModificationDialog() {
+        val booking = this.booking ?: return
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Change Station")
+            .setMessage("Station modification is not supported by the backend. Please cancel this booking and create a new one with a different station.")
+            .setPositiveButton("OK") { _, _ ->
+                // Do nothing - just close the dialog
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    
     private fun showCancelConfirmation() {
+        val booking = this.booking ?: return
+        
+        // Check if booking can be cancelled (12-hour rule)
+        if (!canModifyBooking(booking)) {
+            Toasts.showWarning(this, "Bookings cannot be cancelled within 12 hours of start time")
+            return
+        }
+        
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Cancel Booking")
             .setMessage("Are you sure you want to cancel this booking?")

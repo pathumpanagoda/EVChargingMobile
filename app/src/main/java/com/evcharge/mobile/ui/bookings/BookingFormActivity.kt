@@ -260,7 +260,7 @@ class BookingFormActivity : AppCompatActivity() {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = startDateTime
         
-        DatePickerDialog(
+        val datePickerDialog = DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
@@ -268,12 +268,25 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
                 newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
                 startDateTime = newCalendar.timeInMillis
+                
+                // Auto-set end time to 2 hours after start time
+                autoSetEndTime()
                 updateDateTimeFields()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        )
+        
+        // Set maximum date to 7 days from now
+        val maxDate = Calendar.getInstance()
+        maxDate.add(Calendar.DAY_OF_MONTH, 7)
+        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
+        
+        // Set minimum date to today
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
+        
+        datePickerDialog.show()
     }
     
     private fun showStartTimePicker() {
@@ -288,6 +301,9 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                 newCalendar.set(Calendar.MINUTE, minute)
                 startDateTime = newCalendar.timeInMillis
+                
+                // Auto-set end time to 2 hours after start time
+                autoSetEndTime()
                 updateDateTimeFields()
             },
             calendar.get(Calendar.HOUR_OF_DAY),
@@ -300,7 +316,7 @@ class BookingFormActivity : AppCompatActivity() {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = endDateTime
         
-        DatePickerDialog(
+        val datePickerDialog = DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
@@ -313,7 +329,17 @@ class BookingFormActivity : AppCompatActivity() {
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        )
+        
+        // Set maximum date to 7 days from now
+        val maxDate = Calendar.getInstance()
+        maxDate.add(Calendar.DAY_OF_MONTH, 7)
+        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
+        
+        // Set minimum date to today
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
+        
+        datePickerDialog.show()
     }
     
     private fun showEndTimePicker() {
@@ -334,6 +360,14 @@ class BookingFormActivity : AppCompatActivity() {
             calendar.get(Calendar.MINUTE),
             true
         ).show()
+    }
+    
+    private fun autoSetEndTime() {
+        // Set end time to 2 hours after start time
+        val endCalendar = Calendar.getInstance()
+        endCalendar.timeInMillis = startDateTime
+        endCalendar.add(Calendar.HOUR_OF_DAY, 2)
+        endDateTime = endCalendar.timeInMillis
     }
     
     private fun updateDateTimeFields() {
