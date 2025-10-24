@@ -2,7 +2,6 @@ package com.evcharge.mobile.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.evcharge.mobile.App
@@ -45,7 +44,6 @@ class RegisterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_register)
         
-        setupToolbar()
         initializeComponents()
         setupClickListeners()
     }
@@ -177,27 +175,6 @@ class RegisterActivity : AppCompatActivity() {
         }
         
         return true
-    }
-    
-    private fun setupToolbar() {
-        try {
-            setSupportActionBar(findViewById(R.id.toolbar))
-            supportActionBar?.setDisplayHomeAsUpEnabled(true)
-            supportActionBar?.title = "Register"
-        } catch (e: Exception) {
-            // Handle action bar conflict gracefully
-            android.util.Log.w("RegisterActivity", "Toolbar setup failed: ${e.message}")
-        }
-    }
-    
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                finish()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
     
     private fun navigateToDashboard() {

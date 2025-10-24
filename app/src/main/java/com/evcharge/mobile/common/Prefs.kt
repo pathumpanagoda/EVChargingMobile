@@ -16,6 +16,7 @@ class Prefs(context: Context) {
         private const val KEY_NIC = "nic"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_LOGIN_TIME = "login_time"
+        private const val KEY_SELECTED_ROLE = "selected_role" // For dual role login
         private const val SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L // 24 hours
     }
     
@@ -29,6 +30,21 @@ class Prefs(context: Context) {
             putString(KEY_TOKEN, token)
             putString(KEY_ROLE, role)
             putString(KEY_NIC, nic)
+            putBoolean(KEY_IS_LOGGED_IN, true)
+            putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
+            apply()
+        }
+    }
+    
+    /**
+     * Save authentication data with selected role (for dual role login)
+     */
+    fun saveAuthDataWithRole(token: String, role: String, nic: String, selectedRole: String) {
+        prefs.edit().apply {
+            putString(KEY_TOKEN, token)
+            putString(KEY_ROLE, role)
+            putString(KEY_NIC, nic)
+            putString(KEY_SELECTED_ROLE, selectedRole)
             putBoolean(KEY_IS_LOGGED_IN, true)
             putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
             apply()
@@ -60,6 +76,11 @@ class Prefs(context: Context) {
      * Get user NIC
      */
     fun getNIC(): String = prefs.getString(KEY_NIC, "") ?: ""
+    
+    /**
+     * Get selected role (for dual role login)
+     */
+    fun getSelectedRole(): String = prefs.getString(KEY_SELECTED_ROLE, "") ?: ""
     
     /**
      * Check if user is logged in
@@ -125,4 +146,30 @@ class Prefs(context: Context) {
      * Check if user is operator (StationOperator or Backoffice)
      */
     fun isOperator(): Boolean = isStationOperator() || isBackoffice()
+    
+    /**
+     * Check if current user is EVOwner with dual access
+     */
+    fun isEVOwnerWithDualAccess(): Boolean = getRole() == "EVOwner"
+    
+    /**
+     * Check if user is currently logged in as Owner (for dual role)
+     */
+    fun isLoggedInAsOwner(): Boolean = getSelectedRole() == "Owner"
+    
+    /**
+     * Check if user is currently logged in as Operator (for dual role)
+     */
+    fun isLoggedInAsOperator(): Boolean = getSelectedRole() == "Operator"
+    
+    /**
+     * Get effective role (selected role for EVOwners, actual role for others)
+     */
+    fun getEffectiveRole(): String {
+        return if (isEVOwnerWithDualAccess() && getSelectedRole().isNotEmpty()) {
+            getSelectedRole()
+        } else {
+            getRole()
+        }
+    }
 }

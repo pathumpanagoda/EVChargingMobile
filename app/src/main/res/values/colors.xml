@@ -7,10 +7,16 @@
     <color name="accent">#FF4081</color>
     
     <!-- Status Colors -->
-    <color name="status_pending">#FFC107</color>
-    <color name="status_approved">#2196F3</color>
-    <color name="status_completed">#4CAF50</color>
-    <color name="status_cancelled">#F44336</color>
+    <color name="status_pending">#FF9800</color>
+    <color name="status_approved">#1976D2</color>
+    <color name="status_completed">#388E3C</color>
+    <color name="status_cancelled">#D32F2F</color>
+    
+    <!-- Status Background Colors -->
+    <color name="status_pending_bg">#FFF3E0</color>
+    <color name="status_approved_bg">#E3F2FD</color>
+    <color name="status_completed_bg">#E8F5E8</color>
+    <color name="status_cancelled_bg">#FFEBEE</color>
     
     <!-- Background Colors -->
     <color name="background_light">#FAFAFA</color>

@@ -101,12 +101,3 @@ data class BookingCompleteResponse(
     val message: String,
     val data: Booking? = null
 )
-
-/**
- * Slot availability response DTO
- */
-data class SlotAvailabilityResponse(
-    val isAvailable: Boolean,
-    val message: String,
-    val booking: Booking? = null
-)

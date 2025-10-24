@@ -54,6 +54,38 @@ class AuthRepository(
     }
     
     /**
+     * Login user with selected role (for dual role login)
+     */
+    suspend fun loginWithRole(request: LoginRequest, selectedRole: String): Result<LoginResponse> {
+        return try {
+            val result = authApi.login(request)
+            
+            if (result.isSuccess()) {
+                val loginResponse = result.getDataOrNull()
+                if (loginResponse != null) {
+                    // Save authentication data with selected role
+                    val nicToSave = if (loginResponse.role == "EVOwner") loginResponse.userId else loginResponse.nic ?: ""
+                    prefs.saveAuthDataWithRole(
+                        loginResponse.token,
+                        loginResponse.role,
+                        nicToSave,
+                        selectedRole
+                    )
+                    
+                    // If EVOwner, save to local database
+                    if (loginResponse.role == "EVOwner" && loginResponse.userId.isNotEmpty()) {
+                        saveOwnerToLocal(loginResponse.userId, loginResponse)
+                    }
+                }
+            }
+            
+            result
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+    
+    /**
      * Register new owner
      */
     suspend fun registerOwner(request: RegisterRequest): Result<RegisterResponse> {
@@ -147,6 +179,40 @@ class AuthRepository(
      * Get current user ID (NIC for EVOwner, user ID for system users)
      */
     fun getCurrentUserId(): String = prefs.getNIC() // This stores the userId from backend
+    
+    /**
+     * Check if current user is EVOwner with dual access
+     */
+    fun isEVOwnerWithDualAccess(): Boolean = prefs.isEVOwnerWithDualAccess()
+    
+    /**
+     * Check if user is currently logged in as Owner (for dual role)
+     */
+    fun isLoggedInAsOwner(): Boolean = prefs.isLoggedInAsOwner()
+    
+    /**
+     * Check if user is currently logged in as Operator (for dual role)
+     */
+    fun isLoggedInAsOperator(): Boolean = prefs.isLoggedInAsOperator()
+    
+    /**
+     * Get effective role (selected role for EVOwners, actual role for others)
+     */
+    fun getEffectiveRole(): String = prefs.getEffectiveRole()
+    
+    /**
+     * Switch role for EVOwner (between Owner and Operator)
+     */
+    fun switchRole(newRole: String) {
+        if (isEVOwnerWithDualAccess()) {
+            prefs.saveAuthDataWithRole(
+                prefs.getToken(),
+                prefs.getRole(),
+                prefs.getNIC(),
+                newRole
+            )
+        }
+    }
     
     /**
      * Get owner from local database

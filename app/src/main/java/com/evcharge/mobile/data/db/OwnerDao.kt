@@ -30,8 +30,9 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             result != -1L
         } catch (e: Exception) {
             false
+        } finally {
+            db.close()
         }
-        // Note: Don't close database here - let SQLiteOpenHelper manage connections
     }
     
     /**
@@ -57,6 +58,8 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             result > 0
         } catch (e: Exception) {
             false
+        } finally {
+            db.close()
         }
     }
     
@@ -80,6 +83,8 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             result > 0
         } catch (e: Exception) {
             false
+        } finally {
+            db.close()
         }
     }
     
@@ -108,6 +113,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             null
         } finally {
             cursor.close()
+            db.close()
         }
     }
     
@@ -136,6 +142,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             emptyList()
         } finally {
             cursor.close()
+            db.close()
         }
     }
     
@@ -164,6 +171,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             emptyList()
         } finally {
             cursor.close()
+            db.close()
         }
     }
     
@@ -187,6 +195,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             cursor.count > 0
         } finally {
             cursor.close()
+            db.close()
         }
     }
     
@@ -205,6 +214,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
         } catch (e: Exception) {
             false
         } finally {
+            db.close()
         }
     }
     
@@ -222,6 +232,7 @@ class OwnerDao(private val dbHelper: UserDbHelper) {
             }
         } finally {
             cursor.close()
+            db.close()
         }
     }
     

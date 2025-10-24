@@ -98,6 +98,11 @@
     <string name="error_location_permission">Location permission required</string>
     <string name="error_camera_permission">Camera permission required</string>
     
+    <!-- Role-based Error Messages -->
+    <string name="error_role_mismatch_station_operator">Station Operators can only login as \'Operator\'. Please select \'Login as Operator\'.</string>
+    <string name="error_role_mismatch_backoffice">Backoffice users can only login as \'Operator\'. Please select \'Login as Operator\'.</string>
+    <string name="error_unknown_role">Unknown user role. Please contact support.</string>
+    
     <!-- Validation Messages -->
     <string name="validation_nic_required">NIC is required</string>
     <string name="validation_nic_invalid">Invalid NIC format</string>

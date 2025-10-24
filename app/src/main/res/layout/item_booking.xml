@@ -35,12 +35,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="PENDING"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
-                android:minWidth="80dp"
+                android:minWidth="90dp"
                 android:gravity="center"
-                app:chipMinHeight="32dp"
-                app:chipCornerRadius="16dp" />
+                app:chipMinHeight="36dp"
+                app:chipCornerRadius="18dp"
+                app:chipStrokeWidth="1dp"
+                app:chipStrokeColor="@color/divider" />
 
         </LinearLayout>
 

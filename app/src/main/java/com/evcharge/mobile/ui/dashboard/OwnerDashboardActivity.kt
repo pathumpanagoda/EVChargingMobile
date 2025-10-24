@@ -57,7 +57,6 @@ class OwnerDashboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_owner_dashboard)
         
-        setupToolbar()
         initializeComponents()
         setupUI()
         setupClickListeners()
@@ -232,11 +231,6 @@ class OwnerDashboardActivity : AppCompatActivity() {
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            android.R.id.home -> {
-                // Dashboard is root, so finish app instead of going back
-                finishAffinity()
-                true
-            }
             R.id.action_logout -> {
                 showLogoutConfirmation()
                 true
@@ -266,17 +260,6 @@ class OwnerDashboardActivity : AppCompatActivity() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
-    }
-    
-    private fun setupToolbar() {
-        try {
-            setSupportActionBar(findViewById(R.id.toolbar))
-            supportActionBar?.setDisplayHomeAsUpEnabled(false) // Dashboard is root, no back button
-            supportActionBar?.title = "EV Charging Dashboard"
-        } catch (e: Exception) {
-            // Handle action bar conflict gracefully
-            android.util.Log.w("OwnerDashboardActivity", "Toolbar setup failed: ${e.message}")
-        }
     }
     
     override fun onResume() {

@@ -44,7 +44,7 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var btnRegister: MaterialButton
     private lateinit var btnFakeLogin: MaterialButton
     
-    private var isOwner = true
+    private var selectedRole = "Owner" // Can be "Owner" or "Operator"
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,10 +127,7 @@ class AuthActivity : AppCompatActivity() {
             // User type toggle
             userTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
                 if (isChecked) {
-                    isOwner = checkedId == R.id.btn_owner
-                    
-                    // Clear username field when switching roles to prevent confusion
-                    etUsername.text?.clear()
+                    selectedRole = if (checkedId == R.id.btn_owner) "Owner" else "Operator"
                 }
             }
             
@@ -183,27 +180,11 @@ class AuthActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     Toasts.showInfo(this@AuthActivity, "Attempting login with: $username")
                 }
-                val result = authRepository.login(request)
+                val result = authRepository.loginWithRole(request, selectedRole)
                 
                 if (result.isSuccess()) {
                     val loginResponse = result.getDataOrNull()
                     if (loginResponse != null) {
-                        // Validate selected role against actual user role
-                        val isValidRole = validateUserRole(loginResponse.role)
-                        if (!isValidRole) {
-                            withContext(Dispatchers.Main) {
-                                val expectedRole = if (isOwner) "EV Owner" else "Station Operator"
-                                val actualRole = when (loginResponse.role) {
-                                    "EVOwner" -> "EV Owner"
-                                    "StationOperator" -> "Station Operator"
-                                    "Backoffice" -> "Backoffice Admin"
-                                    else -> loginResponse.role
-                                }
-                                Toasts.showError(this@AuthActivity, "Role mismatch! You selected '$expectedRole' but your account is '$actualRole'. Please select the correct role and try again.")
-                            }
-                            return@launch
-                        }
-                        
                         // Check if account is deactivated (for EVOwners only)
                         if (loginResponse.role == "EVOwner") {
                             val userId = loginResponse.userId // For EVOwner, userId is the NIC
@@ -219,11 +200,28 @@ class AuthActivity : AppCompatActivity() {
                             }
                         }
                         
+                        // Validate role-based access
+                        val roleValidationResult = validateRoleAccess(loginResponse.role, selectedRole)
+                        if (!roleValidationResult.isValid) {
+                            withContext(Dispatchers.Main) {
+                                Toasts.showError(this@AuthActivity, roleValidationResult.errorMessage)
+                            }
+                            return@launch
+                        }
+                        
                         withContext(Dispatchers.Main) {
                             Toasts.showSuccess(this@AuthActivity, "Login successful")
                             // Debug: Show role information
-                            Toasts.showInfo(this@AuthActivity, "Role: ${loginResponse.role}, UserId: ${loginResponse.userId}")
-                            navigateToDashboard()
+                            Toasts.showInfo(this@AuthActivity, "Backend Role: ${loginResponse.role}, Selected Role: $selectedRole, UserId: ${loginResponse.userId}")
+                            
+                            // Handle role-based navigation
+                            if (loginResponse.role == "EVOwner") {
+                                // EVOwner can login as both Owner and Operator
+                                navigateToDashboardWithRole(selectedRole)
+                            } else {
+                                // System users (StationOperator, Backoffice) go to operator dashboard
+                                navigateToDashboard()
+                            }
                         }
                     }
                 } else {
@@ -285,21 +283,85 @@ class AuthActivity : AppCompatActivity() {
         }
     }
     
+    /**
+     * Navigate to dashboard based on selected role (for EVOwners with dual access)
+     */
+    private fun navigateToDashboardWithRole(selectedRole: String) {
+        try {
+            Toasts.showInfo(this, "Navigating EVOwner as: $selectedRole")
+            
+            val intent = when (selectedRole) {
+                "Owner" -> {
+                    // EVOwner logging in as Owner - go to Owner Dashboard
+                    Intent(this, OwnerDashboardActivity::class.java)
+                }
+                "Operator" -> {
+                    // EVOwner logging in as Operator - go to Operator Dashboard
+                    Intent(this, OperatorHomeActivity::class.java)
+                }
+                else -> {
+                    // Default to Owner dashboard
+                    Toasts.showError(this, "Unknown selected role: $selectedRole. Navigating to owner dashboard.")
+                    Intent(this, OwnerDashboardActivity::class.java)
+                }
+            }
+            startActivity(intent)
+            finish()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Navigation failed: ${e.message}")
+            // Fallback: try to navigate to owner dashboard
+            try {
+                startActivity(Intent(this, OwnerDashboardActivity::class.java))
+                finish()
+            } catch (e2: Exception) {
+                Toasts.showError(this, "Fallback navigation also failed: ${e2.message}")
+            }
+        }
+    }
+    
     private fun fillDemoData() {
         etUsername.setText("123456789V")
         etPassword.setText("Password123")
     }
     
     /**
-     * Validate if the selected role matches the actual user role from backend
+     * Validate role-based access
      */
-    private fun validateUserRole(actualRole: String): Boolean {
-        return when {
-            isOwner && actualRole == "EVOwner" -> true
-            !isOwner && (actualRole == "StationOperator" || actualRole == "Backoffice") -> true
-            else -> false
+    private fun validateRoleAccess(backendRole: String, selectedRole: String): RoleValidationResult {
+        return when (backendRole) {
+            "EVOwner" -> {
+                // EVOwner can login as both Owner and Operator
+                RoleValidationResult(true, "")
+            }
+            "StationOperator" -> {
+                // StationOperator can only login as Operator
+                if (selectedRole == "Operator") {
+                    RoleValidationResult(true, "")
+                } else {
+                    RoleValidationResult(false, getString(R.string.error_role_mismatch_station_operator))
+                }
+            }
+            "Backoffice" -> {
+                // Backoffice can only login as Operator
+                if (selectedRole == "Operator") {
+                    RoleValidationResult(true, "")
+                } else {
+                    RoleValidationResult(false, getString(R.string.error_role_mismatch_backoffice))
+                }
+            }
+            else -> {
+                RoleValidationResult(false, getString(R.string.error_unknown_role))
+            }
         }
     }
+    
+    /**
+     * Data class for role validation results
+     */
+    private data class RoleValidationResult(
+        val isValid: Boolean,
+        val errorMessage: String
+    )
     
     private fun testSimpleConnectivity() {
         lifecycleScope.launch(Dispatchers.IO) {

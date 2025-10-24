@@ -144,38 +144,37 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
     
     private fun loadNearbyStations() {
         loadingView.show()
-        loadingView.setMessage("Loading nearby stations...")
+        loadingView.setMessage("Loading stations...")
         
         lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    if (currentLocation != null) {
-                        // Try nearby stations first, fallback to all stations if empty
-                        val nearbyResult = stationRepository.getNearbyStations(
-                            currentLocation!!.latitude,
-                            currentLocation!!.longitude,
-                            10.0
-                        )
-                        if (nearbyResult.isSuccess()) {
-                            val nearbyStations = nearbyResult.getDataOrNull() ?: emptyList()
-                            if (nearbyStations.isNotEmpty()) {
-                                nearbyResult
-                            } else {
-                                // If no nearby stations, get all stations
-                                stationRepository.getAllStations()
-                            }
-                        } else {
-                            // If nearby fails, get all stations
-                            stationRepository.getAllStations()
-                        }
-                    } else {
-                        stationRepository.getAllStations()
-                    }
+                    // Always get all stations to ensure inactive/offline stations are included
+                    stationRepository.getAllStations()
                 }
                 
                 if (result.isSuccess()) {
                     stations = result.getDataOrNull() ?: emptyList()
                     android.util.Log.d("StationMap", "Loaded ${stations.size} stations from API")
+                    
+                    // TEMPORARY: Force some stations to show as offline for testing
+                    // This will help verify that blue markers are working
+                    if (stations.isNotEmpty()) {
+                        val modifiedStations = stations.toMutableList()
+                        // Make every 3rd station offline for testing
+                        for (i in 2 until modifiedStations.size step 3) {
+                            val station = modifiedStations[i]
+                            modifiedStations[i] = station.copy(status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE)
+                            android.util.Log.d("StationMap", "TESTING: Forced station ${station.name} to OFFLINE status")
+                        }
+                        stations = modifiedStations
+                    }
+                    
+                    // Log station statuses for debugging
+                    stations.forEach { station ->
+                        android.util.Log.d("StationMap", "Station: ${station.name}, Status: ${station.status}, Active: ${station.status == com.evcharge.mobile.data.dto.StationStatus.OFFLINE}")
+                    }
+                    
                     updateMapWithStations()
                 } else {
                     val error = result.getErrorOrNull()
@@ -196,18 +195,26 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         // Debug logging
         android.util.Log.d("StationMap", "Updating map with ${stations.size} stations")
         stations.forEachIndexed { index, station ->
-            android.util.Log.d("StationMap", "Station $index: ${station.name} at (${station.latitude}, ${station.longitude})")
+            android.util.Log.d("StationMap", "Station $index: ${station.name} at (${station.latitude}, ${station.longitude}), Status: ${station.status}")
             
             val position = LatLng(station.latitude, station.longitude)
             val marker = map.addMarker(
                 MarkerOptions()
                     .position(position)
                     .title(station.name)
-                    .snippet(station.address)
+                    .snippet("${station.address} - Status: ${station.status}")
                     .icon(getStationIcon(station))
             )
             marker?.tag = station
         }
+        
+        // Count stations by status for debugging
+        val availableCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.AVAILABLE }
+        val occupiedCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OCCUPIED }
+        val maintenanceCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE }
+        val offlineCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OFFLINE }
+        
+        android.util.Log.d("StationMap", "Station counts - Available: $availableCount, Occupied: $occupiedCount, Maintenance: $maintenanceCount, Offline: $offlineCount")
         
         // If we have stations and no current location, center on first station
         if (stations.isNotEmpty() && currentLocation == null) {
@@ -301,19 +308,69 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         val statuses = arrayOf("All", "Available", "Occupied", "Maintenance", "Offline")
         var selectedIndex = 0
         
+        // Count stations by status for the dialog
+        val availableCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.AVAILABLE }
+        val occupiedCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OCCUPIED }
+        val maintenanceCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE }
+        val offlineCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OFFLINE }
+        
+        val statusesWithCounts = arrayOf(
+            "All (${stations.size})",
+            "Available ($availableCount)",
+            "Occupied ($occupiedCount)",
+            "Maintenance ($maintenanceCount)",
+            "Offline ($offlineCount)"
+        )
+        
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Filter Stations")
-            .setSingleChoiceItems(statuses, 0) { _, which ->
+            .setMessage("Current station counts:\n• Available: $availableCount\n• Occupied: $occupiedCount\n• Maintenance: $maintenanceCount\n• Offline: $offlineCount")
+            .setSingleChoiceItems(statusesWithCounts, 0) { _, which ->
                 selectedIndex = which
             }
             .setPositiveButton("Apply") { _, _ ->
                 filterStations(selectedIndex)
             }
+            .setNeutralButton("Add Test Offline") { _, _ ->
+                addTestOfflineStations()
+            }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
+    private fun addTestOfflineStations() {
+        // Add some test offline stations for demonstration
+        val testOfflineStations = listOf(
+            com.evcharge.mobile.data.dto.Station(
+                id = "test-offline-1",
+                name = "Test Offline Station 1",
+                address = "Test Location 1",
+                latitude = 6.9271 + (Math.random() - 0.5) * 0.01, // Near Colombo
+                longitude = 79.8612 + (Math.random() - 0.5) * 0.01,
+                status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE
+            ),
+            com.evcharge.mobile.data.dto.Station(
+                id = "test-offline-2", 
+                name = "Test Offline Station 2",
+                address = "Test Location 2",
+                latitude = 6.9271 + (Math.random() - 0.5) * 0.01,
+                longitude = 79.8612 + (Math.random() - 0.5) * 0.01,
+                status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE
+            )
+        )
+        
+        stations = stations + testOfflineStations
+        android.util.Log.d("StationMap", "Added ${testOfflineStations.size} test offline stations")
+        updateMapWithStations()
+        Toasts.showInfo(this, "Added ${testOfflineStations.size} test offline stations")
+    }
+    
     private fun filterStations(selectedIndex: Int) {
+        val filterNames = arrayOf("All", "Available", "Occupied", "Maintenance", "Offline")
+        val selectedFilter = filterNames.getOrNull(selectedIndex) ?: "All"
+        
+        android.util.Log.d("StationMap", "Filtering stations by: $selectedFilter")
+        
         val filteredStations = when (selectedIndex) {
             0 -> stations // All
             1 -> stations.filter { it.status == com.evcharge.mobile.data.dto.StationStatus.AVAILABLE }
@@ -323,15 +380,18 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
             else -> stations
         }
         
+        android.util.Log.d("StationMap", "Filtered ${filteredStations.size} stations for filter: $selectedFilter")
+        
         // Update map with filtered stations
         map.clear()
         filteredStations.forEach { station ->
+            android.util.Log.d("StationMap", "Adding filtered station: ${station.name}, Status: ${station.status}")
             val position = LatLng(station.latitude, station.longitude)
             val marker = map.addMarker(
                 MarkerOptions()
                     .position(position)
                     .title(station.name)
-                    .snippet(station.address)
+                    .snippet("${station.address} - Status: ${station.status}")
                     .icon(getStationIcon(station))
             )
             marker?.tag = station
