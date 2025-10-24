@@ -97,5 +97,39 @@ data class StationAvailabilityResponse(
     val success: Boolean,
     val message: String,
     val isAvailable: Boolean = false,
-    val conflictingBookings: List<Booking>? = null
+    val conflictingBookings: List<Booking>? = null,
+    val stationId: String = "",
+    val stationName: String = "",
+    val totalSlots: Int = 0,
+    val openTime: String = "",
+    val closeTime: String = "",
+    val isActive: Boolean = true,
+    val dateAvailability: List<DateAvailability> = emptyList()
 )
+
+/**
+ * Date availability DTO
+ */
+data class DateAvailability(
+    val date: String,
+    val isClosed: Boolean = false,
+    val specialOpenTime: String? = null,
+    val specialCloseTime: String? = null,
+    val hourAvailability: List<HourAvailability> = emptyList()
+)
+
+/**
+ * Hour availability DTO
+ */
+data class HourAvailability(
+    val hour: String,
+    val capacity: Int,
+    val approvedCount: Int,
+    val pendingCount: Int,
+    val status: String = "open",
+    val reason: String? = null
+) {
+    val available: Int get() = capacity - approvedCount
+    val isFull: Boolean get() = approvedCount >= capacity
+    val isNearlyFull: Boolean get() = capacity > 0 && (approvedCount * 100 / capacity) >= 80
+}

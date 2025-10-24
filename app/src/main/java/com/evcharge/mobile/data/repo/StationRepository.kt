@@ -33,6 +33,13 @@ class StationRepository(private val stationApi: StationApi) {
     }
     
     /**
+     * Get available time slots for a station
+     */
+    suspend fun getAvailableTimeSlots(stationId: String, startDate: String, days: Int = 7): Result<StationAvailabilityResponse> {
+        return stationApi.getAvailableTimeSlots(stationId, startDate, days)
+    }
+    
+    /**
      * Check station availability
      */
     suspend fun checkStationAvailability(stationId: String, startTime: Long, endTime: Long): Result<StationAvailabilityResponse> {

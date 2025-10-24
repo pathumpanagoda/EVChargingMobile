@@ -95,6 +95,30 @@ class StationApi(private val apiClient: ApiClient) {
     }
     
     /**
+     * Get available time slots for a station
+     */
+    suspend fun getAvailableTimeSlots(stationId: String, startDate: String, days: Int = 7): Result<StationAvailabilityResponse> {
+        return try {
+            val response = apiClient.get("/api/StationAvailability/$stationId/availability?start=$startDate&days=$days")
+            
+            if (response.optBoolean("success", false)) {
+                val data = response.optJSONObject("data")
+                if (data != null) {
+                    val availabilityResponse = parseStationAvailabilityResponse(data)
+                    Result.Success(availabilityResponse)
+                } else {
+                    Result.Error(Exception("Invalid response format"))
+                }
+            } else {
+                val message = response.optString("message", "Failed to get availability")
+                Result.Error(Exception(message))
+            }
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+    
+    /**
      * Check station availability
      */
     suspend fun checkStationAvailability(stationId: String, startTime: Long, endTime: Long): Result<StationAvailabilityResponse> {
@@ -218,6 +242,58 @@ class StationApi(private val apiClient: ApiClient) {
             pricePerHour = 5.0, // Default price per hour
             amenities = amenities,
             schedule = schedule
+        )
+    }
+    
+    /**
+     * Parse station availability response from JSON
+     */
+    private fun parseStationAvailabilityResponse(data: JSONObject): StationAvailabilityResponse {
+        val dateAvailability = mutableListOf<DateAvailability>()
+        val dateAvailabilityData = data.optJSONArray("dateAvailability")
+        
+        if (dateAvailabilityData != null) {
+            for (i in 0 until dateAvailabilityData.length()) {
+                val dateData = dateAvailabilityData.getJSONObject(i)
+                val hourAvailability = mutableListOf<HourAvailability>()
+                val hourAvailabilityData = dateData.optJSONArray("hourAvailability")
+                
+                if (hourAvailabilityData != null) {
+                    for (j in 0 until hourAvailabilityData.length()) {
+                        val hourData = hourAvailabilityData.getJSONObject(j)
+                        val hourAvail = HourAvailability(
+                            hour = hourData.optString("hour"),
+                            capacity = hourData.optInt("capacity"),
+                            approvedCount = hourData.optInt("approvedCount"),
+                            pendingCount = hourData.optInt("pendingCount"),
+                            status = hourData.optString("status", "open"),
+                            reason = hourData.optString("reason")
+                        )
+                        hourAvailability.add(hourAvail)
+                    }
+                }
+                
+                val dateAvail = DateAvailability(
+                    date = dateData.optString("date"),
+                    isClosed = dateData.optBoolean("isClosed"),
+                    specialOpenTime = dateData.optString("specialOpenTime").takeIf { it.isNotEmpty() },
+                    specialCloseTime = dateData.optString("specialCloseTime").takeIf { it.isNotEmpty() },
+                    hourAvailability = hourAvailability
+                )
+                dateAvailability.add(dateAvail)
+            }
+        }
+        
+        return StationAvailabilityResponse(
+            success = true,
+            message = "Availability data retrieved",
+            stationId = data.optString("stationId"),
+            stationName = data.optString("stationName"),
+            totalSlots = data.optInt("totalSlots"),
+            openTime = data.optString("openTime"),
+            closeTime = data.optString("closeTime"),
+            isActive = data.optBoolean("isActive"),
+            dateAvailability = dateAvailability
         )
     }
     

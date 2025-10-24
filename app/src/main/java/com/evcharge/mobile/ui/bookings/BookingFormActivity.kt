@@ -9,7 +9,6 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -25,9 +24,9 @@ import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
 import com.evcharge.mobile.data.api.StationApi
-import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingCreateRequest
 import com.evcharge.mobile.data.dto.Station
+import com.evcharge.mobile.common.TimeExt
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.data.repo.StationRepository
 import com.evcharge.mobile.ui.widgets.LoadingView
@@ -48,7 +47,8 @@ class BookingFormActivity : AppCompatActivity() {
     private lateinit var stationRepository: StationRepository
     
     // UI Components
-    private lateinit var etStation: AutoCompleteTextView
+    private lateinit var spinnerStation: Spinner
+    private lateinit var spinnerTimeSlots: Spinner
     private lateinit var etStartDate: TextInputEditText
     private lateinit var etStartTime: TextInputEditText
     private lateinit var etEndDate: TextInputEditText
@@ -59,6 +59,8 @@ class BookingFormActivity : AppCompatActivity() {
     // Data
     private var stations: List<Station> = emptyList()
     private var selectedStationId: String = ""
+    private var availableTimeSlots: List<HourAvailability> = emptyList()
+    private var selectedTimeSlot: HourAvailability? = null
     private var startDateTime: Long = 0
     private var endDateTime: Long = 0
     
@@ -66,113 +68,88 @@ class BookingFormActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_booking_form)
         
-        try {
-            initializeComponents()
-            setupUI()
-            setupClickListeners()
-            loadStations()
-        } catch (e: Exception) {
-            Toasts.showError(this, "Booking form initialization failed: ${e.message}")
-            finish()
-        }
+        initializeComponents()
+        setupUI()
+        setupClickListeners()
+        loadStations()
     }
     
     private fun initializeComponents() {
-        try {
-            prefs = Prefs(this)
-            val apiClient = ApiClient(prefs)
-            val bookingApi = BookingApi(apiClient)
-            val stationApi = StationApi(apiClient)
-            
-            bookingRepository = BookingRepository(bookingApi)
-            stationRepository = StationRepository(stationApi)
-            
-            // Initialize UI components
-            etStation = findViewById(R.id.et_station)
-            etStartDate = findViewById(R.id.et_start_date)
-            etStartTime = findViewById(R.id.et_start_time)
-            etEndDate = findViewById(R.id.et_end_date)
-            etEndTime = findViewById(R.id.et_end_time)
-            btnCreate = findViewById(R.id.btn_create)
-            loadingView = findViewById(R.id.loading_view)
-        } catch (e: Exception) {
-            Toasts.showError(this, "Component initialization failed: ${e.message}")
-            throw e
-        }
+        prefs = Prefs.instance()
+        bookingRepository = BookingRepository()
+        stationRepository = StationRepository()
+        
+        // Initialize UI components
+        spinnerStation = findViewById(R.id.spinner_station)
+        spinnerTimeSlots = findViewById(R.id.spinner_time_slots)
+        etStartDate = findViewById(R.id.et_start_date)
+        etStartTime = findViewById(R.id.et_start_time)
+        etEndDate = findViewById(R.id.et_end_date)
+        etEndTime = findViewById(R.id.et_end_time)
+        btnCreate = findViewById(R.id.btn_create)
+        loadingView = findViewById(R.id.loading_view)
     }
     
     private fun setupUI() {
-        try {
-            // Set up toolbar with error handling for missing toolbar
-            try {
-                setSupportActionBar(findViewById(R.id.toolbar))
-                supportActionBar?.setDisplayHomeAsUpEnabled(true)
-                supportActionBar?.title = "New Booking"
-            } catch (e: Exception) {
-                // Handle missing toolbar gracefully
-                Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
-            }
-            
-            // Set default times (1 hour from now)
-            val calendar = Calendar.getInstance()
-            calendar.add(Calendar.HOUR, 1)
-            startDateTime = calendar.timeInMillis
-            calendar.add(Calendar.HOUR, 2)
-            endDateTime = calendar.timeInMillis
-            
-            updateDateTimeFields()
-        } catch (e: Exception) {
-            Toasts.showError(this, "UI setup failed: ${e.message}")
-            throw e
-        }
+        // Set up toolbar
+        setSupportActionBar(findViewById(R.id.toolbar))
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "New Booking"
+        
+        // Set default times (1 hour from now)
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.HOUR, 1)
+        startDateTime = calendar.timeInMillis
+        calendar.add(Calendar.HOUR, 2)
+        endDateTime = calendar.timeInMillis
+        
+        updateDateTimeFields()
     }
     
     private fun setupClickListeners() {
-        try {
-            // Station selection is now handled in setupStationSpinner()
-            
-            // Date and time pickers
-            etStartDate.setOnClickListener { 
-                try {
-                    showStartDatePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Date picker failed: ${e.message}")
-                }
-            }
-            etStartTime.setOnClickListener { 
-                try {
-                    showStartTimePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Time picker failed: ${e.message}")
-                }
-            }
-            etEndDate.setOnClickListener { 
-                try {
-                    showEndDatePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Date picker failed: ${e.message}")
-                }
-            }
-            etEndTime.setOnClickListener { 
-                try {
-                    showEndTimePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Time picker failed: ${e.message}")
+        // Station selection
+        spinnerStation.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position > 0 && position <= stations.size) {
+                    selectedStationId = stations[position - 1].id
+                    loadAvailableTimeSlots()
+                } else {
+                    selectedStationId = ""
+                    clearTimeSlots()
                 }
             }
             
-            // Create button
-            btnCreate.setOnClickListener {
-                try {
-                    Toasts.showInfo(this, "Creating booking...")
-                    createBooking()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Create booking failed: ${e.message}")
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedStationId = ""
+                clearTimeSlots()
+            }
+        }
+        
+        // Time slot selection
+        spinnerTimeSlots.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position > 0 && position <= availableTimeSlots.size) {
+                    selectedTimeSlot = availableTimeSlots[position - 1]
+                    updateDateTimeFromTimeSlot()
+                } else {
+                    selectedTimeSlot = null
                 }
             }
-        } catch (e: Exception) {
-            Toasts.showError(this, "Click listeners setup failed: ${e.message}")
-            throw e
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedTimeSlot = null
+            }
+        }
+        
+        // Date and time pickers
+        etStartDate.setOnClickListener { showStartDatePicker() }
+        etStartTime.setOnClickListener { showStartTimePicker() }
+        etEndDate.setOnClickListener { showEndDatePicker() }
+        etEndTime.setOnClickListener { showEndTimePicker() }
+        
+        // Create button
+        btnCreate.setOnClickListener {
+            createBooking()
         }
     }
     
@@ -180,88 +157,117 @@ class BookingFormActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Loading stations...")
         
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch {
             try {
-                // Changed to getAllStations() to show all stations regardless of status
-                val result = stationRepository.getAllStations()
+                val result = stationRepository.getAvailableStations()
                 
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (result.isSuccess()) {
-                        stations = result.getDataOrNull() ?: emptyList()
-                        if (stations.isEmpty()) {
-                            Toasts.showWarning(this@BookingFormActivity, "No stations available")
-                        } else {
-                            setupStationSpinner()
-                            Toasts.showInfo(this@BookingFormActivity, "Loaded ${stations.size} stations")
-                        }
-                    } else {
-                        val error = result.getErrorOrNull()
-                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
-                    }
+                if (result.isSuccess()) {
+                    stations = emptyList() // TODO: Fix when backend returns proper Station objects
+                    setupStationSpinner()
+                } else {
+                    val error = result.getErrorOrNull()
+                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load stations")
                 }
             } catch (e: Exception) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toasts.showError(this@BookingFormActivity, "Failed to load stations: ${e.message}")
-                }
+                Toasts.showError(this@BookingFormActivity, "Failed to load stations: ${e.message}")
             } finally {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadingView.hide()
-                }
+                loadingView.hide()
             }
         }
     }
     
     private fun setupStationSpinner() {
-        // Use custom adapter for better station display
-        val adapter = StationAdapter(this, stations)
-        etStation.setAdapter(adapter)
+        val stationNames = mutableListOf("Select a station")
+        stationNames.addAll(stations.map { "${it.name} (${it.customId})" })
         
-        // Enable filtering/searching
-        etStation.threshold = 1
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, stationNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerStation.adapter = adapter
+    }
+    
+    private fun loadAvailableTimeSlots() {
+        if (selectedStationId.isEmpty()) return
         
-        // Show the dropdown on click
-        etStation.setOnClickListener { 
-            etStation.showDropDown() 
-        }
+        loadingView.show()
+        loadingView.setMessage("Loading available time slots...")
         
-        // Handle text input for filtering
-        etStation.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                etStation.showDropDown()
-            }
-        }
-        
-        // Override toString to display station name only
-        etStation.setOnItemClickListener { _, _, position, _ ->
+        lifecycleScope.launch {
             try {
-                if (position < stations.size) {
-                    selectedStationId = stations[position].id
-                    val selectedStation = stations[position]
-                    
-                    // Set only the station name in the text field
-                    etStation.setText(selectedStation.name, false)
-                    
-                    // Show station details
-                    val statusText = when (selectedStation.status) {
-                        com.evcharge.mobile.data.dto.StationStatus.AVAILABLE -> "Available"
-                        com.evcharge.mobile.data.dto.StationStatus.OCCUPIED -> "Occupied"
-                        com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE -> "Under Maintenance"
-                        com.evcharge.mobile.data.dto.StationStatus.OFFLINE -> "Offline"
+                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    .format(java.util.Date())
+                
+                val result = stationRepository.getAvailableTimeSlots(selectedStationId, today, 7)
+                
+                if (result.isSuccess()) {
+                    val availability = result.getDataOrNull()
+                    if (availability != null) {
+                        // Get all available time slots from all dates
+                        availableTimeSlots = availability.dateAvailability
+                            .flatMap { it.hourAvailability }
+                            .filter { it.status == "open" && !it.isFull }
+                            .sortedBy { it.hour }
+                        
+                        setupTimeSlotsSpinner()
+                    } else {
+                        availableTimeSlots = emptyList()
+                        setupTimeSlotsSpinner()
                     }
-                    
-                    Toasts.showInfo(this, "Selected: ${selectedStation.name} ($statusText)")
+                } else {
+                    val error = result.getErrorOrNull()
+                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to load time slots")
+                    clearTimeSlots()
                 }
             } catch (e: Exception) {
-                Toasts.showError(this, "Station selection failed: ${e.message}")
+                Toasts.showError(this@BookingFormActivity, "Failed to load time slots: ${e.message}")
+                clearTimeSlots()
+            } finally {
+                loadingView.hide()
             }
         }
+    }
+    
+    private fun setupTimeSlotsSpinner() {
+        val timeSlotOptions = mutableListOf("Select a time slot")
+        timeSlotOptions.addAll(availableTimeSlots.map { slot ->
+            "${slot.hour} (${slot.available}/${slot.capacity} available)"
+        })
+        
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, timeSlotOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerTimeSlots.adapter = adapter
+    }
+    
+    private fun clearTimeSlots() {
+        availableTimeSlots = emptyList()
+        selectedTimeSlot = null
+        setupTimeSlotsSpinner()
+    }
+    
+    private fun updateDateTimeFromTimeSlot() {
+        if (selectedTimeSlot == null) return
+        
+        val calendar = Calendar.getInstance()
+        val hour = selectedTimeSlot!!.hour.split(":")[0].toInt()
+        val minute = selectedTimeSlot!!.hour.split(":")[1].toInt()
+        
+        // Set start time to selected hour
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, minute)
+        calendar.set(Calendar.SECOND, 0)
+        startDateTime = calendar.timeInMillis
+        
+        // Set end time to 2 hours later (default booking duration)
+        calendar.add(Calendar.HOUR, 2)
+        endDateTime = calendar.timeInMillis
+        
+        updateDateTimeFields()
     }
     
     private fun showStartDatePicker() {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = startDateTime
         
-        val datePickerDialog = DatePickerDialog(
+        DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
@@ -269,25 +275,12 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
                 newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
                 startDateTime = newCalendar.timeInMillis
-                
-                // Auto-set end time to 2 hours after start time
-                autoSetEndTime()
                 updateDateTimeFields()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
-        
-        // Set maximum date to 7 days from now
-        val maxDate = Calendar.getInstance()
-        maxDate.add(Calendar.DAY_OF_MONTH, 7)
-        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
-        
-        // Set minimum date to today
-        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
-        
-        datePickerDialog.show()
+        ).show()
     }
     
     private fun showStartTimePicker() {
@@ -302,9 +295,6 @@ class BookingFormActivity : AppCompatActivity() {
                 newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                 newCalendar.set(Calendar.MINUTE, minute)
                 startDateTime = newCalendar.timeInMillis
-                
-                // Auto-set end time to 2 hours after start time
-                autoSetEndTime()
                 updateDateTimeFields()
             },
             calendar.get(Calendar.HOUR_OF_DAY),
@@ -317,7 +307,7 @@ class BookingFormActivity : AppCompatActivity() {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = endDateTime
         
-        val datePickerDialog = DatePickerDialog(
+        DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
@@ -330,17 +320,7 @@ class BookingFormActivity : AppCompatActivity() {
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
-        
-        // Set maximum date to 7 days from now
-        val maxDate = Calendar.getInstance()
-        maxDate.add(Calendar.DAY_OF_MONTH, 7)
-        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
-        
-        // Set minimum date to today
-        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
-        
-        datePickerDialog.show()
+        ).show()
     }
     
     private fun showEndTimePicker() {
@@ -361,14 +341,6 @@ class BookingFormActivity : AppCompatActivity() {
             calendar.get(Calendar.MINUTE),
             true
         ).show()
-    }
-    
-    private fun autoSetEndTime() {
-        // Set end time to 2 hours after start time
-        val endCalendar = Calendar.getInstance()
-        endCalendar.timeInMillis = startDateTime
-        endCalendar.add(Calendar.HOUR_OF_DAY, 2)
-        endDateTime = endCalendar.timeInMillis
     }
     
     private fun updateDateTimeFields() {
@@ -394,6 +366,11 @@ class BookingFormActivity : AppCompatActivity() {
             return
         }
         
+        if (selectedTimeSlot == null) {
+            Toasts.showValidationError(this, "Please select a time slot")
+            return
+        }
+        
         if (!Validators.isValidBookingDuration(startDateTime, endDateTime)) {
             Toasts.showValidationError(this, Validators.getBookingDurationErrorMessage())
             return
@@ -404,89 +381,8 @@ class BookingFormActivity : AppCompatActivity() {
             return
         }
         
-        // Check slot availability before showing booking summary
-        checkSlotAvailability()
-    }
-    
-    private fun checkSlotAvailability() {
-        loadingView.show()
-        loadingView.setMessage("Checking slot availability...")
-        
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val result = bookingRepository.checkSlotAvailability(selectedStationId, startDateTime)
-                
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (result.isSuccess()) {
-                        val availabilityResponse = result.getDataOrNull()
-                        if (availabilityResponse != null) {
-                            if (availabilityResponse.isAvailable) {
-                                // Check if booking was already created during availability check
-                                if (availabilityResponse.booking != null) {
-                                    // Booking was created, navigate to booking detail
-                                    handleBookingCreated(availabilityResponse.booking)
-                                } else {
-                                    // Slots are available, show booking summary
-                                    showBookingSummary()
-                                }
-                            } else {
-                                // Slots are not available, show error message
-                                showSlotUnavailableDialog(availabilityResponse.message)
-                            }
-                        } else {
-                            Toasts.showError(this@BookingFormActivity, "Failed to check slot availability")
-                        }
-                    } else {
-                        val error = result.getErrorOrNull()
-                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to check slot availability")
-                    }
-                }
-            } catch (e: Exception) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toasts.showError(this@BookingFormActivity, "Failed to check slot availability: ${e.message}")
-                }
-            } finally {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadingView.hide()
-                }
-            }
-        }
-    }
-    
-    private fun showSlotUnavailableDialog(message: String) {
-        val selectedStation = stations.find { it.id == selectedStationId }
-        val stationName = selectedStation?.name ?: "Unknown Station"
-        
-        AlertDialog.Builder(this)
-            .setTitle("Slots Not Available")
-            .setMessage("$message\n\nStation: $stationName\nTime: ${Datex.formatToDisplay(startDateTime)}")
-            .setPositiveButton("OK") { _, _ ->
-                // User acknowledged, they can try a different time
-            }
-            .setNegativeButton("Try Different Time") { _, _ ->
-                // Clear the time selection so user can pick a different time
-                clearTimeSelection()
-            }
-            .show()
-    }
-    
-    private fun clearTimeSelection() {
-        // Reset to current time
-        val now = System.currentTimeMillis()
-        startDateTime = now
-        endDateTime = now + (2 * 60 * 60 * 1000) // 2 hours later
-        
-        updateDateTimeFields()
-    }
-    
-    private fun handleBookingCreated(booking: Booking) {
-        Toasts.showSuccess(this, "Booking created successfully")
-        
-        // Open booking detail
-        val intent = Intent(this, BookingDetailActivity::class.java)
-        intent.putExtra("booking_id", booking.id)
-        startActivity(intent)
-        finish()
+        // Show booking summary
+        showBookingSummary()
     }
     
     private fun showBookingSummary() {
@@ -497,13 +393,17 @@ class BookingFormActivity : AppCompatActivity() {
         val endTimeStr = Datex.formatToDisplay(endDateTime)
         val duration = (endDateTime - startDateTime) / (1000 * 60 * 60) // hours
         
+        val timeSlotInfo = selectedTimeSlot?.let { slot ->
+            "\nTime Slot: ${slot.hour} (${slot.available}/${slot.capacity} available)"
+        } ?: ""
+        
         val message = """
             Station: $stationName
             Start: $startTimeStr
             End: $endTimeStr
-            Duration: ${duration}h
+            Duration: ${duration}h$timeSlotInfo
             
-            ${Validators.getBookingCreationErrorMessage()}
+            This booking will be submitted for approval.
         """.trimIndent()
         
         AlertDialog.Builder(this)
@@ -520,37 +420,35 @@ class BookingFormActivity : AppCompatActivity() {
         loadingView.show()
         loadingView.setMessage("Creating booking...")
         
-        val request = BookingCreateRequest(selectedStationId, startDateTime, endDateTime)
+        val iso = TimeExt.millisToIsoUTC(startDateTime)
+        val request = BookingCreateRequest(
+            stationId = selectedStationId,
+            reservationDateTime = iso
+        )
         
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch {
             try {
-                val result = bookingRepository.createBooking(request)
+                val result = bookingRepository.create(selectedStationId, iso)
                 
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (result.isSuccess()) {
-                        val booking = result.getDataOrNull()
-                        if (booking != null) {
-                            Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
-                            
-                            // Open booking detail
-                            val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
-                            intent.putExtra("booking_id", booking.id)
-                            startActivity(intent)
-                            finish()
-                        }
-                    } else {
-                        val error = result.getErrorOrNull()
-                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
+                if (result.isSuccess()) {
+                    val booking = result.getDataOrNull()
+                    if (booking != null) {
+                        Toasts.showSuccess(this@BookingFormActivity, "Booking created successfully")
+                        
+                        // Open booking detail
+                        val intent = Intent(this@BookingFormActivity, BookingDetailActivity::class.java)
+                        intent.putExtra("booking_id", "temp_id") // TODO: Get actual booking ID
+                        startActivity(intent)
+                        finish()
                     }
+                } else {
+                    val error = result.getErrorOrNull()
+                    Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to create booking")
                 }
             } catch (e: Exception) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
-                }
+                Toasts.showError(this@BookingFormActivity, "Failed to create booking: ${e.message}")
             } finally {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadingView.hide()
-                }
+                loadingView.hide()
             }
         }
     }

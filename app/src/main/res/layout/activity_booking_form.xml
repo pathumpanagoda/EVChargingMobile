@@ -1,36 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fillViewport="true">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:title="New Booking"
-            app:titleTextColor="@color/white"
-            app:navigationIcon="@drawable/ic_arrow_back" />
-
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
+        android:orientation="vertical"
+        android:padding="24dp">
 
         <!-- Station Selection -->
         <com.google.android.material.card.MaterialCardView
@@ -55,20 +34,27 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/station"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    app:startIconDrawable="@drawable/ic_location_on"
-                    app:endIconMode="dropdown_menu">
+                    android:hint="Select Station"
+                    app:startIconDrawable="@drawable/ic_location_on">
 
-                    <AutoCompleteTextView
-                        android:id="@+id/et_station"
+                    <Spinner
+                        android:id="@+id/spinner_station"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:minHeight="56dp"
-                        android:inputType="text"
-                        android:completionThreshold="1"
-                        android:padding="12dp"
-                        android:textSize="14sp" />
+                        android:layout_height="wrap_content" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Available Time Slots"
+                    app:startIconDrawable="@drawable/ic_access_time">
+
+                    <Spinner
+                        android:id="@+id/spinner_time_slots"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -92,7 +78,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/date_time"
+                    android:text="Date &amp; Time"
                     android:textAppearance="@style/TextAppearance.Title"
                     android:layout_marginBottom="12dp" />
 
@@ -114,12 +100,10 @@
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_start_date"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
+                            android:layout_height="wrap_content"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
+                            android:clickable="true" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -128,18 +112,16 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
-                        android:hint="@string/start_time"
+                        android:hint="Time"
                         app:startIconDrawable="@drawable/ic_access_time">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_start_time"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
+                            android:layout_height="wrap_content"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
+                            android:clickable="true" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -162,12 +144,10 @@
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_end_date"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
+                            android:layout_height="wrap_content"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
+                            android:clickable="true" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -176,18 +156,16 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
-                        android:hint="@string/time"
+                        android:hint="Time"
                         app:startIconDrawable="@drawable/ic_access_time">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/et_end_time"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
+                            android:layout_height="wrap_content"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
+                            android:clickable="true" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -203,18 +181,15 @@
             style="@style/PrimaryButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginHorizontal="16dp"
             android:text="@string/create_booking" />
 
-        <!-- Loading View -->
-        <com.evcharge.mobile.ui.widgets.LoadingView
-            android:id="@+id/loading_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
+    </LinearLayout>
 
-        </LinearLayout>
+    <!-- Loading View -->
+    <com.evcharge.mobile.ui.widgets.LoadingView
+        android:id="@+id/loading_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
-    </ScrollView>
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</ScrollView>
