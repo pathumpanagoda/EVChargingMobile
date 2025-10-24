@@ -7,9 +7,9 @@
     <color name="accent">#FF4081</color>
     
     <!-- Status Colors -->
-    <color name="status_pending">#FFC107</color>
+    <color name="status_pending">#FF9800</color>
     <color name="status_approved">#2196F3</color>
-    <color name="status_completed">#4CAF50</color>
+    <color name="status_completed">#2196F3</color>
     <color name="status_cancelled">#F44336</color>
     
     <!-- Background Colors -->
@@ -31,7 +31,7 @@
     
     <!-- Error and Success -->
     <color name="error">#F44336</color>
-    <color name="success">#4CAF50</color>
+    <color name="success">#2196F3</color>
     <color name="warning">#FF9800</color>
     <color name="info">#2196F3</color>
     
