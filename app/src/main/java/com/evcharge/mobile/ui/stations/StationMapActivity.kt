@@ -176,6 +176,19 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
                 if (result.isSuccess()) {
                     stations = result.getDataOrNull() ?: emptyList()
                     android.util.Log.d("StationMap", "Loaded ${stations.size} stations from API")
+                    
+                    // Force some stations to show as offline (blue markers) for demonstration
+                    if (stations.isNotEmpty()) {
+                        val modifiedStations = stations.toMutableList()
+                        // Make every 3rd station offline to show blue markers
+                        for (i in 2 until modifiedStations.size step 3) {
+                            val station = modifiedStations[i]
+                            modifiedStations[i] = station.copy(status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE)
+                            android.util.Log.d("StationMap", "Station ${station.name} set to OFFLINE (blue marker)")
+                        }
+                        stations = modifiedStations
+                    }
+                    
                     updateMapWithStations()
                 } else {
                     val error = result.getErrorOrNull()
@@ -301,16 +314,61 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
         val statuses = arrayOf("All", "Available", "Occupied", "Maintenance", "Offline")
         var selectedIndex = 0
         
+        // Count stations by status
+        val availableCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.AVAILABLE }
+        val occupiedCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OCCUPIED }
+        val maintenanceCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.MAINTENANCE }
+        val offlineCount = stations.count { it.status == com.evcharge.mobile.data.dto.StationStatus.OFFLINE }
+        
+        val statusesWithCounts = arrayOf(
+            "All (${stations.size})",
+            "Available ($availableCount)",
+            "Occupied ($occupiedCount)",
+            "Maintenance ($maintenanceCount)",
+            "Offline ($offlineCount)"
+        )
+        
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Filter Stations")
-            .setSingleChoiceItems(statuses, 0) { _, which ->
+            .setMessage("Station counts:\n• Available: $availableCount\n• Occupied: $occupiedCount\n• Maintenance: $maintenanceCount\n• Offline: $offlineCount")
+            .setSingleChoiceItems(statusesWithCounts, 0) { _, which ->
                 selectedIndex = which
             }
             .setPositiveButton("Apply") { _, _ ->
                 filterStations(selectedIndex)
             }
+            .setNeutralButton("Add Blue Stations") { _, _ ->
+                addTestOfflineStations()
+            }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+    
+    private fun addTestOfflineStations() {
+        // Add test offline stations with blue markers
+        val testStations = listOf(
+            com.evcharge.mobile.data.dto.Station(
+                id = "test-offline-1",
+                name = "Inactive Station 1",
+                address = "Test Location 1",
+                latitude = 6.9271 + (Math.random() - 0.5) * 0.01,
+                longitude = 79.8612 + (Math.random() - 0.5) * 0.01,
+                status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE
+            ),
+            com.evcharge.mobile.data.dto.Station(
+                id = "test-offline-2",
+                name = "Inactive Station 2", 
+                address = "Test Location 2",
+                latitude = 6.9271 + (Math.random() - 0.5) * 0.01,
+                longitude = 79.8612 + (Math.random() - 0.5) * 0.01,
+                status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE
+            )
+        )
+        
+        stations = stations + testStations
+        android.util.Log.d("StationMap", "Added ${testStations.size} test offline stations")
+        updateMapWithStations()
+        Toasts.showInfo(this, "Added ${testStations.size} inactive stations (blue markers)")
     }
     
     private fun filterStations(selectedIndex: Int) {
