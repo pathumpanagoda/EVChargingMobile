@@ -62,10 +62,10 @@ class AuthActivity : AppCompatActivity() {
             android.util.Log.w("AuthActivity", "Connectivity test failed: ${e.message}")
         }
         
-        // Check if user is already logged in
+        // Check if user is already logged in with valid session
         try {
-            if (prefs.isLoggedIn()) {
-                // Navigate to dashboard without making API calls immediately
+            if (prefs.isLoggedIn() && prefs.hasValidSession()) {
+                // User is already logged in with valid session, navigate to dashboard
                 navigateToDashboard()
             }
         } catch (e: Exception) {

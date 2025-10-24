@@ -152,10 +152,18 @@ class StationApi(private val apiClient: ApiClient) {
         
         android.util.Log.d("StationApi", "Parsed location: $address at ($latitude, $longitude)")
         
-        // Parse station capacity and determine status - using correct backend field names
-        val totalSlots = data.optInt("totalSlots", 1)
-        val availableSlots = data.optInt("availableSlots", 1)
-        val isActive = data.optBoolean("isActive", true)
+        // Parse custom ID - Backend returns customId (lowercase in JSON)
+        val customId = data.optString("customId")
+        android.util.Log.d("StationApi", "Custom ID from API: customId='${data.optString("customId")}', final='$customId'")
+        
+        // Debug full API response to see what fields are available
+        android.util.Log.d("StationApi", "Full API response keys: ${data.keys().asSequence().toList()}")
+        android.util.Log.d("StationApi", "Full API response: ${data.toString()}")
+        
+        // Parse station capacity and determine status - using C# property names from backend
+        val totalSlots = data.optInt("TotalSlots", 1)
+        val availableSlots = data.optInt("AvailableSlots", 1)
+        val isActive = data.optBoolean("IsActive", true)
         
         // Determine status based on availability and active state
         val status = when {
@@ -198,6 +206,7 @@ class StationApi(private val apiClient: ApiClient) {
         
         return Station(
             id = data.optString("id"),
+            customId = customId, // Use the debugged customId variable
             name = data.optString("name", "Unknown Station"),
             address = address,
             latitude = latitude,

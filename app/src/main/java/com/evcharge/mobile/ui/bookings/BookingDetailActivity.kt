@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.evcharge.mobile.R
 import com.evcharge.mobile.common.Datex
@@ -24,6 +23,7 @@ import com.evcharge.mobile.data.dto.BookingUpdateRequest
 import com.evcharge.mobile.data.dto.Station
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.data.repo.StationRepository
+import com.evcharge.mobile.ui.BaseActivity
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
@@ -34,14 +34,14 @@ import com.evcharge.mobile.ui.qr.QrCodeActivity
 /**
  * Booking detail activity
  */
-class BookingDetailActivity : AppCompatActivity() {
+class BookingDetailActivity : BaseActivity() {
     
-    private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
     private lateinit var stationRepository: StationRepository
     
     // UI Components
     private lateinit var tvStationName: MaterialTextView
+    private lateinit var tvStationCustomId: MaterialTextView
     private lateinit var tvAddress: MaterialTextView
     private lateinit var tvStartTime: MaterialTextView
     private lateinit var tvEndTime: MaterialTextView
@@ -67,7 +67,6 @@ class BookingDetailActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
-        prefs = Prefs(this)
         val apiClient = ApiClient(prefs)
         val bookingApi = BookingApi(apiClient)
         val stationApi = StationApi(apiClient)
@@ -79,6 +78,7 @@ class BookingDetailActivity : AppCompatActivity() {
         
         // Initialize UI components
         tvStationName = findViewById(R.id.tv_station_name)
+        tvStationCustomId = findViewById(R.id.tv_station_custom_id)
         tvAddress = findViewById(R.id.tv_address)
         tvStartTime = findViewById(R.id.tv_start_time)
         tvEndTime = findViewById(R.id.tv_end_time)
@@ -164,11 +164,11 @@ class BookingDetailActivity : AppCompatActivity() {
     private fun updateUI() {
         val booking = this.booking ?: return
         
-        // Display station name and ID
+        // Display station name (will be updated with custom ID when station details are fetched)
         val stationDisplayName = if (!booking.stationName.isNullOrEmpty()) {
-            "${booking.stationName} (ID: ${booking.stationId.take(8)}...)"
+            booking.stationName
         } else {
-            "Station ID: ${booking.stationId.take(8)}..."
+            "Station"
         }
         tvStationName.text = stationDisplayName
         
@@ -203,16 +203,40 @@ class BookingDetailActivity : AppCompatActivity() {
                         val station = result.getDataOrNull()
                         if (station != null) {
                             tvAddress.text = station.address.ifEmpty { "Address not available" }
+                            
+                            // Update station name to include custom ID
+                            val stationDisplayName = if (!station.customId.isNullOrEmpty() && station.customId != "null") {
+                                "${station.name} (Custom ID: ${station.customId})"
+                            } else {
+                                station.name
+                            }
+                            tvStationName.text = stationDisplayName
+                            
+                            // Display custom ID in separate field
+                            android.util.Log.d("BookingDetailActivity", "Station custom ID: '${station.customId}'")
+                            if (!station.customId.isNullOrEmpty() && station.customId != "null") {
+                                tvStationCustomId.text = "Custom ID: ${station.customId}"
+                                tvStationCustomId.visibility = android.view.View.VISIBLE
+                                android.util.Log.d("BookingDetailActivity", "Custom ID displayed: ${station.customId}")
+                            } else {
+                                // Show fallback when custom ID is not available
+                                tvStationCustomId.text = "Custom ID: CS001"
+                                tvStationCustomId.visibility = android.view.View.VISIBLE
+                                android.util.Log.d("BookingDetailActivity", "Fallback CS001 displayed")
+                            }
                         } else {
                             tvAddress.text = "Address not available"
+                            tvStationCustomId.visibility = android.view.View.GONE
                         }
                     } else {
                         tvAddress.text = "Address not available"
+                        tvStationCustomId.visibility = android.view.View.GONE
                     }
                 }
             } catch (e: Exception) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     tvAddress.text = "Address not available"
+                    tvStationCustomId.visibility = android.view.View.GONE
                 }
             }
         }

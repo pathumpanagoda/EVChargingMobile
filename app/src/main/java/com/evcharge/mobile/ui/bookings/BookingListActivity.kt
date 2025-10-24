@@ -249,6 +249,7 @@ class BookingAdapter(
     
     private var bookings: List<Booking> = emptyList()
     private val stationCache = mutableMapOf<String, String>() // stationId -> stationName
+    private val customIdCache = mutableMapOf<String, String>() // stationId -> customId
     
     fun updateBookings(newBookings: List<Booking>) {
         bookings = newBookings
@@ -261,7 +262,7 @@ class BookingAdapter(
         val uniqueStationIds = bookings.map { it.stationId }.distinct()
         uniqueStationIds.forEach { stationId ->
             if (!stationCache.containsKey(stationId)) {
-                // Fetch station name asynchronously
+                // Fetch station name and custom ID asynchronously
                 kotlinx.coroutines.GlobalScope.launch {
                     try {
                         val result = stationRepository.getStation(stationId)
@@ -269,6 +270,12 @@ class BookingAdapter(
                             val station = result.getDataOrNull()
                             station?.let {
                                 stationCache[stationId] = it.name
+                                // Cache custom ID (use actual value or fallback)
+                                customIdCache[stationId] = if (!it.customId.isNullOrEmpty() && it.customId != "null") {
+                                    it.customId
+                                } else {
+                                    "CS001" // Fallback for no custom ID
+                                }
                                 // Notify adapter to refresh the view
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     notifyDataSetChanged()
@@ -276,7 +283,7 @@ class BookingAdapter(
                             }
                         }
                     } catch (e: Exception) {
-                        android.util.Log.w("BookingAdapter", "Failed to fetch station name for $stationId: ${e.message}")
+                        android.util.Log.w("BookingAdapter", "Failed to fetch station data for $stationId: ${e.message}")
                     }
                 }
             }
@@ -292,7 +299,8 @@ class BookingAdapter(
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
         val booking = bookings[position]
         val stationName = stationCache[booking.stationId]
-        holder.bind(booking, stationName, onBookingClick)
+        val customId = customIdCache[booking.stationId]
+        holder.bind(booking, stationName, customId, onBookingClick)
     }
     
     override fun getItemCount(): Int = bookings.size
@@ -303,12 +311,16 @@ class BookingAdapter(
         private val tvStatus: com.google.android.material.chip.Chip = itemView.findViewById(R.id.tv_status)
         private val tvDuration: MaterialTextView = itemView.findViewById(R.id.tv_duration)
         
-        fun bind(booking: Booking, stationName: String?, onBookingClick: (Booking) -> Unit) {
-            // Display station name and ID
-            val displayName = if (!stationName.isNullOrEmpty()) {
-                "$stationName (ID: ${booking.stationId.take(8)}...)"
+        fun bind(booking: Booking, stationName: String?, customId: String?, onBookingClick: (Booking) -> Unit) {
+            // Display both station name and custom ID
+            val displayName = if (!stationName.isNullOrEmpty() && !customId.isNullOrEmpty() && customId != "null") {
+                "$stationName (Custom ID: $customId)"
+            } else if (!stationName.isNullOrEmpty()) {
+                stationName
+            } else if (!customId.isNullOrEmpty() && customId != "null") {
+                "Custom ID: $customId"
             } else {
-                "Station ID: ${booking.stationId.take(8)}..."
+                "Station (Custom ID: CS001)" // Default fallback
             }
             tvStationName.text = displayName
             

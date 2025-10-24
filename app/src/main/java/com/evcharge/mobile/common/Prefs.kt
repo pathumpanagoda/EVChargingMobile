@@ -15,6 +15,8 @@ class Prefs(context: Context) {
         private const val KEY_ROLE = "role"
         private const val KEY_NIC = "nic"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
+        private const val KEY_LOGIN_TIME = "login_time"
+        private const val SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L // 24 hours
     }
     
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -28,6 +30,7 @@ class Prefs(context: Context) {
             putString(KEY_ROLE, role)
             putString(KEY_NIC, nic)
             putBoolean(KEY_IS_LOGGED_IN, true)
+            putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
             apply()
         }
     }
@@ -74,7 +77,33 @@ class Prefs(context: Context) {
      * Check if user has valid session
      */
     fun hasValidSession(): Boolean {
-        return isLoggedIn() && getToken().isNotEmpty() && getRole().isNotEmpty()
+        if (!isLoggedIn()) return false
+        
+        val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
+        val currentTime = System.currentTimeMillis()
+        
+        // Check if session has expired
+        return (currentTime - loginTime) < SESSION_TIMEOUT_MS
+    }
+    
+    /**
+     * Get session remaining time in milliseconds
+     */
+    fun getSessionRemainingTime(): Long {
+        val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - loginTime
+        
+        return maxOf(0L, SESSION_TIMEOUT_MS - elapsed)
+    }
+    
+    /**
+     * Extend session by updating login time
+     */
+    fun extendSession() {
+        if (isLoggedIn()) {
+            prefs.edit().putLong(KEY_LOGIN_TIME, System.currentTimeMillis()).apply()
+        }
     }
     
     /**

@@ -52,11 +52,11 @@ class AuthApi(private val apiClient: ApiClient) {
     suspend fun register(request: RegisterRequest): Result<RegisterResponse> {
         return try {
             val body = JSONObject().apply {
-                put("nic", request.nic)
-                put("name", request.name)
-                put("email", request.email)
-                put("phone", request.phone)
-                put("password", request.password)
+                put("NIC", request.nic)
+                put("Name", request.name)
+                put("Email", request.email)
+                put("Phone", request.phone)
+                put("Password", request.password)
             }
             
             val response = apiClient.post("/api/auth/register", body)
@@ -67,7 +67,7 @@ class AuthApi(private val apiClient: ApiClient) {
                     LoginResponse(
                         token = data.optString("token"),
                         role = data.optString("role"),
-                        nic = data.optString("nic"),
+                        nic = data.optString("userId"), // Backend returns 'userId' not 'nic'
                         message = data.optString("message")
                     )
                 } else null

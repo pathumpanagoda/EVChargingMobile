@@ -19,6 +19,7 @@ enum class StationStatus {
  */
 data class Station(
     val id: String,
+    val customId: String? = null,
     val name: String,
     val address: String,
     val latitude: Double,
