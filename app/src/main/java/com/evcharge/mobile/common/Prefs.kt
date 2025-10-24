@@ -112,7 +112,17 @@ class Prefs(context: Context) {
     fun isOwner(): Boolean = getRole() == "EVOwner"
     
     /**
-     * Check if user is operator
+     * Check if user is station operator
      */
-    fun isOperator(): Boolean = getRole() == "Operator"
+    fun isStationOperator(): Boolean = getRole() == "StationOperator"
+    
+    /**
+     * Check if user is backoffice admin
+     */
+    fun isBackoffice(): Boolean = getRole() == "Backoffice"
+    
+    /**
+     * Check if user is operator (StationOperator or Backoffice)
+     */
+    fun isOperator(): Boolean = isStationOperator() || isBackoffice()
 }

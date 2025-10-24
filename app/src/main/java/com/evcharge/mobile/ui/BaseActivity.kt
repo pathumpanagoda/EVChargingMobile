@@ -86,3 +86,4 @@ abstract class BaseActivity : AppCompatActivity() {
         return prefs.isLoggedIn() && prefs.hasValidSession()
     }
 }
+

@@ -32,15 +32,17 @@ class AuthRepository(
                 val loginResponse = result.getDataOrNull()
                 if (loginResponse != null) {
                     // Save authentication data to preferences
+                    // For EVOwner, userId is the NIC; for system users, userId is the user ID
+                    val nicToSave = if (loginResponse.role == "EVOwner") loginResponse.userId else loginResponse.nic ?: ""
                     prefs.saveAuthData(
                         loginResponse.token,
                         loginResponse.role,
-                        loginResponse.nic ?: ""
+                        nicToSave
                     )
                     
-                    // If owner, save to local database
-                    if (loginResponse.role == "Owner" && loginResponse.nic != null) {
-                        saveOwnerToLocal(loginResponse.nic, loginResponse)
+                    // If EVOwner, save to local database
+                    if (loginResponse.role == "EVOwner" && loginResponse.userId.isNotEmpty()) {
+                        saveOwnerToLocal(loginResponse.userId, loginResponse)
                     }
                 }
             }
@@ -64,14 +66,16 @@ class AuthRepository(
                     val loginData = registerResponse.data
                     
                     // Save authentication data to preferences
+                    // For EVOwner registration, userId is the NIC
+                    val nicToSave = if (loginData.role == "EVOwner") loginData.userId else loginData.nic ?: ""
                     prefs.saveAuthData(
                         loginData.token,
                         loginData.role,
-                        loginData.nic ?: ""
+                        nicToSave
                     )
                     
                     // Save owner to local database
-                    if (loginData.nic != null) {
+                    if (loginData.role == "EVOwner" && loginData.userId.isNotEmpty()) {
                         val ownerProfile = OwnerProfile(
                             nic = request.nic,
                             name = request.name,
@@ -128,6 +132,21 @@ class AuthRepository(
      * Check if current user is operator
      */
     fun isOperator(): Boolean = prefs.isOperator()
+    
+    /**
+     * Check if current user is station operator
+     */
+    fun isStationOperator(): Boolean = prefs.isStationOperator()
+    
+    /**
+     * Check if current user is backoffice admin
+     */
+    fun isBackoffice(): Boolean = prefs.isBackoffice()
+    
+    /**
+     * Get current user ID (NIC for EVOwner, user ID for system users)
+     */
+    fun getCurrentUserId(): String = prefs.getNIC() // This stores the userId from backend
     
     /**
      * Get owner from local database

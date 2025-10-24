@@ -29,8 +29,10 @@ class AuthApi(private val apiClient: ApiClient) {
                 if (data != null) {
                     val loginResponse = LoginResponse(
                         token = data.optString("token"),
+                        expiresAt = data.optString("expiresAt"),
                         role = data.optString("role"),
-                        nic = data.optString("userId"), // Backend returns 'userId' not 'nic'
+                        userId = data.optString("userId"), // Backend returns 'userId' (NIC for EVOwner, user ID for system users)
+                        nic = if (data.optString("role") == "EVOwner") data.optString("userId") else null, // For EVOwner, userId is the NIC
                         message = data.optString("message")
                     )
                     Result.Success(loginResponse)
@@ -66,8 +68,10 @@ class AuthApi(private val apiClient: ApiClient) {
                 val loginData = if (data != null) {
                     LoginResponse(
                         token = data.optString("token"),
+                        expiresAt = data.optString("expiresAt"),
                         role = data.optString("role"),
-                        nic = data.optString("userId"), // Backend returns 'userId' not 'nic'
+                        userId = data.optString("userId"), // Backend returns 'userId' (NIC for EVOwner, user ID for system users)
+                        nic = if (data.optString("role") == "EVOwner") data.optString("userId") else null, // For EVOwner, userId is the NIC
                         message = data.optString("message")
                     )
                 } else null

@@ -24,12 +24,14 @@ data class RegisterRequest(
 )
 
 /**
- * Login response DTO
+ * Login response DTO - matches backend AuthResponse structure
  */
 data class LoginResponse(
     val token: String,
+    val expiresAt: String? = null,
     val role: String,
-    val nic: String? = null,
+    val userId: String, // This is the NIC for EVOwner or user ID for system users
+    val nic: String? = null, // Additional NIC field for EVOwner
     val message: String? = null
 )
 

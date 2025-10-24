@@ -128,6 +128,9 @@ class AuthActivity : AppCompatActivity() {
             userTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
                 if (isChecked) {
                     isOwner = checkedId == R.id.btn_owner
+                    
+                    // Clear username field when switching roles to prevent confusion
+                    etUsername.text?.clear()
                 }
             }
             
@@ -185,9 +188,26 @@ class AuthActivity : AppCompatActivity() {
                 if (result.isSuccess()) {
                     val loginResponse = result.getDataOrNull()
                     if (loginResponse != null) {
-                        // Check if account is deactivated (for owners)
-                        if (isOwner && (loginResponse.role == "EVOwner" || loginResponse.role == "Owner")) {
-                            val statusResult = authRepository.checkAccountStatus(loginResponse.nic ?: "")
+                        // Validate selected role against actual user role
+                        val isValidRole = validateUserRole(loginResponse.role)
+                        if (!isValidRole) {
+                            withContext(Dispatchers.Main) {
+                                val expectedRole = if (isOwner) "EV Owner" else "Station Operator"
+                                val actualRole = when (loginResponse.role) {
+                                    "EVOwner" -> "EV Owner"
+                                    "StationOperator" -> "Station Operator"
+                                    "Backoffice" -> "Backoffice Admin"
+                                    else -> loginResponse.role
+                                }
+                                Toasts.showError(this@AuthActivity, "Role mismatch! You selected '$expectedRole' but your account is '$actualRole'. Please select the correct role and try again.")
+                            }
+                            return@launch
+                        }
+                        
+                        // Check if account is deactivated (for EVOwners only)
+                        if (loginResponse.role == "EVOwner") {
+                            val userId = loginResponse.userId // For EVOwner, userId is the NIC
+                            val statusResult = authRepository.checkAccountStatus(userId)
                             if (statusResult.isSuccess()) {
                                 val isActive = statusResult.getDataOrNull() ?: true
                                 if (!isActive) {
@@ -202,7 +222,7 @@ class AuthActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             Toasts.showSuccess(this@AuthActivity, "Login successful")
                             // Debug: Show role information
-                            Toasts.showInfo(this@AuthActivity, "Role: ${loginResponse.role}, NIC: ${loginResponse.nic}")
+                            Toasts.showInfo(this@AuthActivity, "Role: ${loginResponse.role}, UserId: ${loginResponse.userId}")
                             navigateToDashboard()
                         }
                     }
@@ -231,12 +251,25 @@ class AuthActivity : AppCompatActivity() {
         try {
             val role = prefs.getRole()
             val isOwner = prefs.isOwner()
-            Toasts.showInfo(this, "Navigating - Role: $role, IsOwner: $isOwner")
+            val isStationOperator = prefs.isStationOperator()
+            val isBackoffice = prefs.isBackoffice()
             
-            val intent = if (isOwner) {
-                Intent(this, OwnerDashboardActivity::class.java)
-            } else {
-                Intent(this, OperatorHomeActivity::class.java)
+            Toasts.showInfo(this, "Navigating - Role: $role, IsOwner: $isOwner, IsStationOperator: $isStationOperator, IsBackoffice: $isBackoffice")
+            
+            val intent = when {
+                isOwner -> {
+                    // EV Owner - navigate to owner dashboard
+                    Intent(this, OwnerDashboardActivity::class.java)
+                }
+                isStationOperator || isBackoffice -> {
+                    // Station Operator or Backoffice - navigate to operator dashboard
+                    Intent(this, OperatorHomeActivity::class.java)
+                }
+                else -> {
+                    // Unknown role - default to owner dashboard
+                    Toasts.showError(this, "Unknown role: $role. Navigating to owner dashboard.")
+                    Intent(this, OwnerDashboardActivity::class.java)
+                }
             }
             startActivity(intent)
             finish()
@@ -255,6 +288,17 @@ class AuthActivity : AppCompatActivity() {
     private fun fillDemoData() {
         etUsername.setText("123456789V")
         etPassword.setText("Password123")
+    }
+    
+    /**
+     * Validate if the selected role matches the actual user role from backend
+     */
+    private fun validateUserRole(actualRole: String): Boolean {
+        return when {
+            isOwner && actualRole == "EVOwner" -> true
+            !isOwner && (actualRole == "StationOperator" || actualRole == "Backoffice") -> true
+            else -> false
+        }
     }
     
     private fun testSimpleConnectivity() {
