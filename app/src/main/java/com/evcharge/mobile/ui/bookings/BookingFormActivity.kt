@@ -25,6 +25,7 @@ import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
 import com.evcharge.mobile.data.api.StationApi
+import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingCreateRequest
 import com.evcharge.mobile.data.dto.Station
 import com.evcharge.mobile.data.repo.BookingRepository
@@ -403,8 +404,89 @@ class BookingFormActivity : AppCompatActivity() {
             return
         }
         
-        // Show booking summary
-        showBookingSummary()
+        // Check slot availability before showing booking summary
+        checkSlotAvailability()
+    }
+    
+    private fun checkSlotAvailability() {
+        loadingView.show()
+        loadingView.setMessage("Checking slot availability...")
+        
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val result = bookingRepository.checkSlotAvailability(selectedStationId, startDateTime)
+                
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (result.isSuccess()) {
+                        val availabilityResponse = result.getDataOrNull()
+                        if (availabilityResponse != null) {
+                            if (availabilityResponse.isAvailable) {
+                                // Check if booking was already created during availability check
+                                if (availabilityResponse.booking != null) {
+                                    // Booking was created, navigate to booking detail
+                                    handleBookingCreated(availabilityResponse.booking)
+                                } else {
+                                    // Slots are available, show booking summary
+                                    showBookingSummary()
+                                }
+                            } else {
+                                // Slots are not available, show error message
+                                showSlotUnavailableDialog(availabilityResponse.message)
+                            }
+                        } else {
+                            Toasts.showError(this@BookingFormActivity, "Failed to check slot availability")
+                        }
+                    } else {
+                        val error = result.getErrorOrNull()
+                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to check slot availability")
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toasts.showError(this@BookingFormActivity, "Failed to check slot availability: ${e.message}")
+                }
+            } finally {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadingView.hide()
+                }
+            }
+        }
+    }
+    
+    private fun showSlotUnavailableDialog(message: String) {
+        val selectedStation = stations.find { it.id == selectedStationId }
+        val stationName = selectedStation?.name ?: "Unknown Station"
+        
+        AlertDialog.Builder(this)
+            .setTitle("Slots Not Available")
+            .setMessage("$message\n\nStation: $stationName\nTime: ${Datex.formatToDisplay(startDateTime)}")
+            .setPositiveButton("OK") { _, _ ->
+                // User acknowledged, they can try a different time
+            }
+            .setNegativeButton("Try Different Time") { _, _ ->
+                // Clear the time selection so user can pick a different time
+                clearTimeSelection()
+            }
+            .show()
+    }
+    
+    private fun clearTimeSelection() {
+        // Reset to current time
+        val now = System.currentTimeMillis()
+        startDateTime = now
+        endDateTime = now + (2 * 60 * 60 * 1000) // 2 hours later
+        
+        updateDateTimeFields()
+    }
+    
+    private fun handleBookingCreated(booking: Booking) {
+        Toasts.showSuccess(this, "Booking created successfully")
+        
+        // Open booking detail
+        val intent = Intent(this, BookingDetailActivity::class.java)
+        intent.putExtra("booking_id", booking.id)
+        startActivity(intent)
+        finish()
     }
     
     private fun showBookingSummary() {

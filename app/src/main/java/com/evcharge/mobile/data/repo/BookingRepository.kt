@@ -52,6 +52,13 @@ class BookingRepository(private val bookingApi: BookingApi) {
     }
     
     /**
+     * Check slot availability before creating booking
+     */
+    suspend fun checkSlotAvailability(stationId: String, startTime: Long): Result<SlotAvailabilityResponse> {
+        return bookingApi.checkSlotAvailability(stationId, startTime)
+    }
+    
+    /**
      * Complete booking (for operator)
      */
     suspend fun completeBooking(bookingId: String, qrCode: String): Result<BookingCompleteResponse> {

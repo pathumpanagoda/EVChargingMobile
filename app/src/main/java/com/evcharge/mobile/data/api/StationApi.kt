@@ -165,30 +165,13 @@ class StationApi(private val apiClient: ApiClient) {
         val availableSlots = data.optInt("AvailableSlots", 1)
         val isActive = data.optBoolean("IsActive", true)
         
-        // Debug logging for station status determination
-        android.util.Log.d("StationApi", "Station ${data.optString("name", "Unknown")}: isActive=$isActive, totalSlots=$totalSlots, availableSlots=$availableSlots")
-        
         // Determine status based on availability and active state
         val status = when {
-            !isActive -> {
-                android.util.Log.d("StationApi", "Station marked as OFFLINE due to isActive=false")
-                StationStatus.OFFLINE
-            }
-            availableSlots == 0 -> {
-                android.util.Log.d("StationApi", "Station marked as OCCUPIED due to no available slots")
-                StationStatus.OCCUPIED
-            }
-            availableSlots < totalSlots -> {
-                android.util.Log.d("StationApi", "Station marked as OCCUPIED due to partial occupancy")
-                StationStatus.OCCUPIED
-            }
-            else -> {
-                android.util.Log.d("StationApi", "Station marked as AVAILABLE")
-                StationStatus.AVAILABLE
-            }
+            !isActive -> StationStatus.OFFLINE
+            availableSlots == 0 -> StationStatus.OCCUPIED
+            availableSlots < totalSlots -> StationStatus.OCCUPIED
+            else -> StationStatus.AVAILABLE
         }
-        
-        android.util.Log.d("StationApi", "Final status for ${data.optString("name", "Unknown")}: $status")
         
         // Parse amenities (if available)
         val amenities = mutableListOf<String>()

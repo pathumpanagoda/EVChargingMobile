@@ -36,6 +36,7 @@ class OperatorHomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_operator_home)
         
         try {
+            setupToolbar()
             initializeComponents()
             setupUI()
             setupClickListeners()
@@ -129,6 +130,17 @@ class OperatorHomeActivity : AppCompatActivity() {
             }
             .setNegativeButton("No", null)
             .show()
+    }
+    
+    private fun setupToolbar() {
+        try {
+            setSupportActionBar(findViewById(R.id.toolbar))
+            supportActionBar?.setDisplayHomeAsUpEnabled(false) // Dashboard is root, no back button
+            supportActionBar?.title = "Station Operator Dashboard"
+        } catch (e: Exception) {
+            // Handle action bar conflict gracefully
+            android.util.Log.w("OperatorHomeActivity", "Toolbar setup failed: ${e.message}")
+        }
     }
     
     private fun logout() {

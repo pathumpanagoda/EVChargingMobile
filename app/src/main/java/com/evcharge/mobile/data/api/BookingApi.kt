@@ -195,6 +195,61 @@ class BookingApi(private val apiClient: ApiClient) {
     }
     
     /**
+     * Check slot availability before creating booking
+     */
+    suspend fun checkSlotAvailability(stationId: String, startTime: Long): Result<SlotAvailabilityResponse> {
+        return try {
+            // Convert Unix timestamp to ISO 8601 format for backend
+            val startDateTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
+                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                .format(java.util.Date(startTime))
+            
+            val body = JSONObject().apply {
+                put("stationId", stationId)
+                put("reservationDateTime", startDateTime)
+            }
+            
+            // Try to create a booking to check availability
+            // The backend will return "No slots available" if slots are full
+            val response = apiClient.post("/api/booking", body)
+            
+            if (response.optBoolean("success", false)) {
+                // If successful, slots are available and booking was created
+                val data = response.optJSONObject("data")
+                val booking = if (data != null) parseBooking(data) else null
+                
+                val availabilityResponse = SlotAvailabilityResponse(
+                    isAvailable = true,
+                    message = "Slots are available",
+                    booking = booking // Return the created booking
+                )
+                Result.Success(availabilityResponse)
+            } else {
+                val message = response.optString("message", "Failed to check availability")
+                val isSlotUnavailable = message.contains("No slots available", ignoreCase = true)
+                
+                val availabilityResponse = SlotAvailabilityResponse(
+                    isAvailable = false,
+                    message = if (isSlotUnavailable) "All slots are filled for this time slot" else message,
+                    booking = null
+                )
+                Result.Success(availabilityResponse)
+            }
+        } catch (e: Exception) {
+            // Handle HTTP 409 (Conflict) for slot unavailability
+            val errorMessage = e.message ?: "Unknown error"
+            val isSlotUnavailable = errorMessage.contains("409") || errorMessage.contains("No slots available", ignoreCase = true)
+            
+            val availabilityResponse = SlotAvailabilityResponse(
+                isAvailable = false,
+                message = if (isSlotUnavailable) "All slots are filled for this time slot" else errorMessage,
+                booking = null
+            )
+            Result.Success(availabilityResponse)
+        }
+    }
+    
+    /**
      * Complete booking (for operator)
      */
     suspend fun completeBooking(bookingId: String, qrCode: String): Result<BookingCompleteResponse> {

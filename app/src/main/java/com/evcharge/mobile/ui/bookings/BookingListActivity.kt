@@ -6,7 +6,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,9 +17,11 @@ import com.evcharge.mobile.common.getErrorOrNull
 import com.evcharge.mobile.common.isSuccess
 import com.evcharge.mobile.data.api.ApiClient
 import com.evcharge.mobile.data.api.BookingApi
+import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingStatus
 import com.evcharge.mobile.data.repo.BookingRepository
+import com.evcharge.mobile.data.repo.StationRepository
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
@@ -34,6 +35,7 @@ class BookingListActivity : AppCompatActivity() {
     
     private lateinit var prefs: Prefs
     private lateinit var bookingRepository: BookingRepository
+    private lateinit var stationRepository: StationRepository
     
     // UI Components
     private lateinit var tabLayout: TabLayout
@@ -67,7 +69,9 @@ class BookingListActivity : AppCompatActivity() {
             prefs = Prefs(this)
             val apiClient = ApiClient(prefs)
             val bookingApi = BookingApi(apiClient)
+            val stationApi = StationApi(apiClient)
             bookingRepository = BookingRepository(bookingApi)
+            stationRepository = StationRepository(stationApi)
             
             // Initialize UI components
             tabLayout = findViewById(R.id.tab_layout)
@@ -77,7 +81,7 @@ class BookingListActivity : AppCompatActivity() {
             loadingView = findViewById(R.id.loading_view)
             
             // Setup adapter
-            adapter = BookingAdapter { booking ->
+            adapter = BookingAdapter(stationRepository) { booking ->
                 openBookingDetail(booking)
             }
             recyclerView.layoutManager = LinearLayoutManager(this)
@@ -239,14 +243,51 @@ class BookingListActivity : AppCompatActivity() {
  * RecyclerView adapter for booking list
  */
 class BookingAdapter(
+    private val stationRepository: StationRepository,
     private val onBookingClick: (Booking) -> Unit
 ) : RecyclerView.Adapter<BookingAdapter.BookingViewHolder>() {
     
     private var bookings: List<Booking> = emptyList()
+    private val stationCache = mutableMapOf<String, String>() // stationId -> stationName
+    private val customIdCache = mutableMapOf<String, String>() // stationId -> customId
     
     fun updateBookings(newBookings: List<Booking>) {
         bookings = newBookings
+        // Pre-fetch station names for all bookings
+        fetchStationNames()
         notifyDataSetChanged()
+    }
+    
+    private fun fetchStationNames() {
+        val uniqueStationIds = bookings.map { it.stationId }.distinct()
+        uniqueStationIds.forEach { stationId ->
+            if (!stationCache.containsKey(stationId)) {
+                // Fetch station name and custom ID asynchronously
+                kotlinx.coroutines.GlobalScope.launch {
+                    try {
+                        val result = stationRepository.getStation(stationId)
+                        if (result.isSuccess()) {
+                            val station = result.getDataOrNull()
+                            station?.let {
+                                stationCache[stationId] = it.name
+                                // Cache custom ID (use actual value or fallback)
+                                customIdCache[stationId] = if (!it.customId.isNullOrEmpty() && it.customId != "null") {
+                                    it.customId
+                                } else {
+                                    "CS001" // Fallback for no custom ID
+                                }
+                                // Notify adapter to refresh the view
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    notifyDataSetChanged()
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("BookingAdapter", "Failed to fetch station data for $stationId: ${e.message}")
+                    }
+                }
+            }
+        }
     }
     
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): BookingViewHolder {
@@ -256,7 +297,10 @@ class BookingAdapter(
     }
     
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
-        holder.bind(bookings[position], onBookingClick)
+        val booking = bookings[position]
+        val stationName = stationCache[booking.stationId]
+        val customId = customIdCache[booking.stationId]
+        holder.bind(booking, stationName, customId, onBookingClick)
     }
     
     override fun getItemCount(): Int = bookings.size
@@ -267,21 +311,44 @@ class BookingAdapter(
         private val tvStatus: com.google.android.material.chip.Chip = itemView.findViewById(R.id.tv_status)
         private val tvDuration: MaterialTextView = itemView.findViewById(R.id.tv_duration)
         
-        fun bind(booking: Booking, onBookingClick: (Booking) -> Unit) {
-            tvStationName.text = booking.stationName ?: "Unknown Station"
+        fun bind(booking: Booking, stationName: String?, customId: String?, onBookingClick: (Booking) -> Unit) {
+            // Display both station name and custom ID
+            val displayName = if (!stationName.isNullOrEmpty() && !customId.isNullOrEmpty() && customId != "null") {
+                "$stationName (Custom ID: $customId)"
+            } else if (!stationName.isNullOrEmpty()) {
+                stationName
+            } else if (!customId.isNullOrEmpty() && customId != "null") {
+                "Custom ID: $customId"
+            } else {
+                "Station (Custom ID: CS001)" // Default fallback
+            }
+            tvStationName.text = displayName
+            
             tvDateTime.text = formatDateTime(booking.startTime)
-            tvStatus.text = booking.status.name
             tvDuration.text = formatDuration(booking.startTime, booking.endTime)
             
-            // Set status color and background
-            val (textColor, backgroundColor) = when (booking.status) {
-                BookingStatus.PENDING -> Pair(R.color.status_pending, R.color.status_pending_bg)
-                BookingStatus.APPROVED -> Pair(R.color.status_approved, R.color.status_approved_bg)
-                BookingStatus.COMPLETED -> Pair(R.color.status_completed, R.color.status_completed_bg)
-                BookingStatus.CANCELLED -> Pair(R.color.status_cancelled, R.color.status_cancelled_bg)
+            // Set status text and style
+            val statusText = booking.status.name.uppercase()
+            tvStatus.text = statusText
+            android.util.Log.d("BookingAdapter", "Setting status: $statusText for booking ${booking.id}")
+            when (booking.status) {
+                BookingStatus.PENDING -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_pending)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.black))
+                }
+                BookingStatus.APPROVED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_approved)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
+                BookingStatus.COMPLETED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_completed)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
+                BookingStatus.CANCELLED -> {
+                    tvStatus.setChipBackgroundColorResource(R.color.status_cancelled)
+                    tvStatus.setTextColor(itemView.context.getColor(R.color.white))
+                }
             }
-            tvStatus.setTextColor(itemView.context.getColor(textColor))
-            tvStatus.setBackgroundColor(itemView.context.getColor(backgroundColor))
             
             itemView.setOnClickListener {
                 onBookingClick(booking)
