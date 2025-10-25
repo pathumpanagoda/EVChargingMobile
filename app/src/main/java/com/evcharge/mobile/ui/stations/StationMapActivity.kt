@@ -177,18 +177,7 @@ class StationMapActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.On
                     stations = result.getDataOrNull() ?: emptyList()
                     android.util.Log.d("StationMap", "Loaded ${stations.size} stations from API")
                     
-                    // Force some stations to show as offline (blue markers) for demonstration
-                    if (stations.isNotEmpty()) {
-                        val modifiedStations = stations.toMutableList()
-                        // Make every 3rd station offline to show blue markers
-                        for (i in 2 until modifiedStations.size step 3) {
-                            val station = modifiedStations[i]
-                            modifiedStations[i] = station.copy(status = com.evcharge.mobile.data.dto.StationStatus.OFFLINE)
-                            android.util.Log.d("StationMap", "Station ${station.name} set to OFFLINE (blue marker)")
-                        }
-                        stations = modifiedStations
-                    }
-                    
+                    // Use stations as returned from API without artificial manipulation
                     updateMapWithStations()
                 } else {
                     val error = result.getErrorOrNull()

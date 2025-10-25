@@ -160,10 +160,10 @@ class StationApi(private val apiClient: ApiClient) {
         android.util.Log.d("StationApi", "Full API response keys: ${data.keys().asSequence().toList()}")
         android.util.Log.d("StationApi", "Full API response: ${data.toString()}")
         
-        // Parse station capacity and determine status - using C# property names from backend
-        val totalSlots = data.optInt("TotalSlots", 1)
-        val availableSlots = data.optInt("AvailableSlots", 1)
-        val isActive = data.optBoolean("IsActive", true)
+        // Parse station capacity and determine status - using actual JSON field names from API
+        val totalSlots = data.optInt("totalSlots", 1)
+        val availableSlots = data.optInt("availableSlots", 1)
+        val isActive = data.optBoolean("isActive", true)
         
         // Determine status based on availability and active state
         val status = when {
