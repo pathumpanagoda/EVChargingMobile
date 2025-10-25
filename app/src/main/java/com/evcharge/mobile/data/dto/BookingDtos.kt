@@ -1,5 +1,7 @@
 package com.evcharge.mobile.data.dto
 
+import java.io.Serializable
+
 /**
  * Data classes for booking API requests and responses
  */
@@ -7,7 +9,7 @@ package com.evcharge.mobile.data.dto
 /**
  * Booking status enum
  */
-enum class BookingStatus {
+enum class BookingStatus : Serializable {
     PENDING,
     APPROVED,
     COMPLETED,
@@ -28,7 +30,7 @@ data class Booking(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val qrCode: String? = null
-)
+) : Serializable
 
 /**
  * Booking create request DTO

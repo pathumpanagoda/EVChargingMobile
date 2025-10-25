@@ -36,6 +36,10 @@ import com.evcharge.mobile.ui.qr.QrCodeActivity
  */
 class BookingDetailActivity : BaseActivity() {
     
+    companion object {
+        private const val MODIFY_BOOKING_REQUEST_CODE = 1001
+    }
+    
     private lateinit var bookingRepository: BookingRepository
     private lateinit var stationRepository: StationRepository
     
@@ -307,17 +311,11 @@ class BookingDetailActivity : BaseActivity() {
             return
         }
         
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Modify Booking")
-            .setMessage("What would you like to modify?")
-            .setPositiveButton("Change Time") { _, _ ->
-                showTimeModificationDialog()
-            }
-            .setNeutralButton("Change Station") { _, _ ->
-                showStationModificationDialog()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        // Navigate to the new ModifyBookingActivity with same UI as create booking
+        val intent = Intent(this, ModifyBookingActivity::class.java).apply {
+            putExtra("booking_id", booking.id)
+        }
+        startActivityForResult(intent, MODIFY_BOOKING_REQUEST_CODE)
     }
     
     private fun showTimeModificationDialog() {
@@ -516,6 +514,22 @@ class BookingDetailActivity : BaseActivity() {
                 true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == MODIFY_BOOKING_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                // Booking was successfully updated
+                val updatedBooking = data?.getSerializableExtra("updated_booking") as? Booking
+                if (updatedBooking != null) {
+                    booking = updatedBooking
+                    updateUI()
+                    Toasts.showSuccess(this, "Booking updated successfully")
+                }
+            }
         }
     }
 }

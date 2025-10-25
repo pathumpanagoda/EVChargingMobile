@@ -69,6 +69,11 @@
             android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
 
         <activity
+            android:name=".ui.bookings.ModifyBookingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EVChargingMobile.NoActionBar" />
+
+        <activity
             android:name=".ui.bookings.BookingDetailActivity"
             android:exported="false" />
 
