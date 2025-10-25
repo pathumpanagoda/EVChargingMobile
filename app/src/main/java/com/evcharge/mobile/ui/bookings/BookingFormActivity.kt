@@ -195,12 +195,16 @@ class BookingFormActivity : AppCompatActivity() {
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (result.isSuccess()) {
-                        stations = result.getDataOrNull() ?: emptyList()
+                        val allStations = result.getDataOrNull() ?: emptyList()
+                        // Filter out deactivated stations (OFFLINE status or inactive stations)
+                        stations = allStations.filter { station ->
+                            station.status != com.evcharge.mobile.data.dto.StationStatus.OFFLINE
+                        }
                         if (stations.isEmpty()) {
-                            Toasts.showWarning(this@BookingFormActivity, "No stations available")
+                            Toasts.showWarning(this@BookingFormActivity, "No active stations available")
                         } else {
                             setupStationSpinner()
-                            Toasts.showInfo(this@BookingFormActivity, "Loaded ${stations.size} stations")
+                            Toasts.showInfo(this@BookingFormActivity, "Loaded ${stations.size} active stations")
                         }
                     } else {
                         val error = result.getErrorOrNull()

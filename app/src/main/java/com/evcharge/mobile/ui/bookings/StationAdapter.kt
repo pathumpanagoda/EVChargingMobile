@@ -44,7 +44,7 @@ class StationAdapter(
         val tvStatus = view.findViewById<TextView>(R.id.tv_station_status)
         val tvName = view.findViewById<TextView>(R.id.tv_station_name)
         val tvAddress = view.findViewById<TextView>(R.id.tv_station_address)
-        val tvPrice = view.findViewById<TextView>(R.id.tv_station_price)
+        val tvStationId = view.findViewById<TextView>(R.id.tv_station_id)
         
         // Set status emoji
         val statusEmoji = when (station.status) {
@@ -61,12 +61,9 @@ class StationAdapter(
         // Set address
         tvAddress.text = station.address
         
-        // Set price
-        tvPrice.text = if (station.pricePerHour > 0) {
-            "$${String.format("%.2f", station.pricePerHour)}/hr"
-        } else {
-            "Free"
-        }
+        // Set station ID (customId if available, otherwise use the main ID)
+        val displayId = station.customId ?: station.id
+        tvStationId.text = displayId
         
         return view
     }

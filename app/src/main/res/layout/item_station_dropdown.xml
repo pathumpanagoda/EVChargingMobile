@@ -49,11 +49,11 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_station_price"
+            android:id="@+id/tv_station_id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/primary"
-            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:layout_marginStart="8dp" />
 
