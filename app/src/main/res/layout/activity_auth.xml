@@ -26,7 +26,7 @@
                 android:layout_marginBottom="24dp"
                 android:src="@drawable/ic_ev_charging"
                 android:contentDescription="@string/app_name"
-                android:tint="@color/primary" />
+                app:tint="@color/primary" />
 
             <TextView
                 android:layout_width="wrap_content"

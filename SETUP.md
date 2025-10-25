@@ -36,10 +36,18 @@ Replace the placeholder API key in these files:
 - `app/src/main/res/values/strings.xml` (line 127)
 
 ### 3. Update Backend URL (if needed)
-In `app/build.gradle`, line 20:
-```gradle
-buildConfigField "String", "BASE_URL", "\"http://your-backend-url:port\""
-```
+The app is currently configured to use `http://192.168.0.101/myapp`
+
+If your backend is on a different IP address:
+1. Update `app/build.gradle` (lines 18 and 31-33)
+2. Update `app/src/main/res/xml/network_security_config.xml` to include your IP address
+
+**For Android Emulator:**
+- Use: `http://10.0.2.2:8080/myapp` (emulator maps to host's localhost)
+
+**For Physical Device:**
+- Use your computer's local IP: `http://192.168.0.101/myapp`
+- Ensure phone and computer are on the same Wi-Fi network
 
 ### 4. Build and Run
 1. **Clean Project**: Build → Clean Project
@@ -52,6 +60,14 @@ buildConfigField "String", "BASE_URL", "\"http://your-backend-url:port\""
 - ✅ App should install on emulator/device
 - ✅ Login screen should appear
 - ✅ All features should work (with proper backend)
+
+## Network Configuration:
+The app is configured to work with physical Android devices on the same network:
+- ✅ HTTP cleartext traffic is enabled (for local network)
+- ✅ Network security config allows connection to `192.168.0.101`
+- ✅ Base URL points to your IIS server at `http://192.168.0.101/myapp`
+
+**Important:** Make sure your phone and server are on the same Wi-Fi network!
 
 ## Troubleshooting:
 

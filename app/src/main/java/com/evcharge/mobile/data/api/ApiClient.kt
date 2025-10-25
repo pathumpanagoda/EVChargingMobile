@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,16 +21,20 @@ class ApiClient(private val prefs: Prefs) {
     companion object {
         private const val TAG = "ApiClient"
         private const val BASE_URL = BuildConfig.BASE_URL
-        private const val TIMEOUT_SECONDS = 30L
+        private const val TIMEOUT_SECONDS = 60L  // Increased timeout for mobile networks
+        private const val CONNECT_TIMEOUT_SECONDS = 30L
+        private const val READ_TIMEOUT_SECONDS = 60L
+        private const val WRITE_TIMEOUT_SECONDS = 30L
     }
     
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(prefs))
             .addInterceptor(LoggingInterceptor())
-            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)  // Retry on connection failure
             .build()
     }
     
@@ -84,6 +89,27 @@ class ApiClient(private val prefs: Prefs) {
     }
     
     /**
+     * Test connection to the server
+     */
+    suspend fun testConnection(): JSONObject {
+        val request = Request.Builder()
+            .url("$BASE_URL/health")  // Try a simple health endpoint
+            .get()
+            .build()
+        
+        return try {
+            executeRequestAsync(request)
+        } catch (e: Exception) {
+            // If health endpoint doesn't exist, try the base URL
+            val baseRequest = Request.Builder()
+                .url(BASE_URL)
+                .get()
+                .build()
+            executeRequestAsync(baseRequest)
+        }
+    }
+    
+    /**
      * Execute HTTP request asynchronously and return JSON response
      */
     private suspend fun executeRequestAsync(request: Request): JSONObject {
@@ -97,8 +123,19 @@ class ApiClient(private val prefs: Prefs) {
      */
     private fun executeRequest(request: Request): JSONObject {
         return try {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Making request to: ${request.url}")
+                Log.d(TAG, "Request method: ${request.method}")
+                Log.d(TAG, "Request headers: ${request.headers}")
+            }
+            
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: "{}"
+            
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
+            }
             
             when (response.code) {
                 200, 201 -> {
@@ -179,12 +216,42 @@ class ApiClient(private val prefs: Prefs) {
                     }
                 }
             }
-        } catch (e: IOException) {
-            Log.e(TAG, "Network error", e)
+        } catch (e: SocketTimeoutException) {
+            Log.e(TAG, "Socket timeout error", e)
             JSONObject().apply {
                 put("success", false)
-                put("message", "Network error. Please check your connection.")
+                put("message", "Connection timeout. The server at $BASE_URL is not responding. Please check if the server is running and accessible.")
+                put("error", "TIMEOUT_ERROR")
+                put("details", "SocketTimeoutException: ${e.message}")
+                put("server_url", BASE_URL)
+                put("suggestion", "Ensure both devices are on the same Wi-Fi network and the server is running")
+            }
+        } catch (e: IOException) {
+            Log.e(TAG, "Network error", e)
+            Log.e(TAG, "IOException details: ${e.message}")
+            Log.e(TAG, "IOException cause: ${e.cause}")
+            
+            val errorMessage = when {
+                e.message?.contains("timeout", ignoreCase = true) == true -> {
+                    "Connection timeout. Please check if the server is running and accessible at $BASE_URL"
+                }
+                e.message?.contains("refused", ignoreCase = true) == true -> {
+                    "Connection refused. The server may not be running or accessible."
+                }
+                e.message?.contains("unreachable", ignoreCase = true) == true -> {
+                    "Network unreachable. Please check your Wi-Fi connection and server IP address."
+                }
+                else -> {
+                    "Network error: ${e.message}. Please check your connection and ensure the server is running."
+                }
+            }
+            
+            JSONObject().apply {
+                put("success", false)
+                put("message", errorMessage)
                 put("error", "NETWORK_ERROR")
+                put("details", e.message)
+                put("server_url", BASE_URL)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error", e)

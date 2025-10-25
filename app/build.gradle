@@ -17,13 +17,23 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
-        buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:5034\""
+        // Base URL for backend API
+        // Use 10.0.2.2 for Android emulator
+        // Use 192.168.0.101 for physical device on same network
+        buildConfigField "String", "BASE_URL", "\"http://192.168.0.101/myapp\""
     }
 
     buildTypes {
+        debug {
+            // Debug build - same as default but for clarity
+            buildConfigField "String", "BASE_URL", "\"http://192.168.0.101/myapp\""
+        }
+        
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Production build - same server
+            buildConfigField "String", "BASE_URL", "\"http://192.168.0.101/myapp\""
         }
     }
     
