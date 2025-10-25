@@ -314,7 +314,7 @@ class BookingAdapter(
         fun bind(booking: Booking, stationName: String?, customId: String?, onBookingClick: (Booking) -> Unit) {
             // Display both station name and custom ID
             val displayName = if (!stationName.isNullOrEmpty() && !customId.isNullOrEmpty() && customId != "null") {
-                "$stationName (Custom ID: $customId)"
+                "$stationName (ID: $customId)"
             } else if (!stationName.isNullOrEmpty()) {
                 stationName
             } else if (!customId.isNullOrEmpty() && customId != "null") {

@@ -206,7 +206,7 @@ class BookingDetailActivity : BaseActivity() {
                             
                             // Update station name to include custom ID
                             val stationDisplayName = if (!station.customId.isNullOrEmpty() && station.customId != "null") {
-                                "${station.name} (Custom ID: ${station.customId})"
+                                "${station.name} (ID: ${station.customId})"
                             } else {
                                 station.name
                             }
@@ -215,7 +215,7 @@ class BookingDetailActivity : BaseActivity() {
                             // Display custom ID in separate field
                             android.util.Log.d("BookingDetailActivity", "Station custom ID: '${station.customId}'")
                             if (!station.customId.isNullOrEmpty() && station.customId != "null") {
-                                tvStationCustomId.text = "Custom ID: ${station.customId}"
+                                tvStationCustomId.text = "ID: ${station.customId}"
                                 tvStationCustomId.visibility = android.view.View.VISIBLE
                                 android.util.Log.d("BookingDetailActivity", "Custom ID displayed: ${station.customId}")
                             } else {
