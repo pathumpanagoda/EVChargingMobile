@@ -85,4 +85,11 @@ class BookingRepository(private val bookingApi: BookingApi) {
     suspend fun getAllBookings(ownerNic: String): Result<List<Booking>> {
         return getOwnerBookings(ownerNic, null)
     }
+    
+    /**
+     * Get available time slots for a station on a specific date
+     */
+    suspend fun getAvailableSlots(stationId: String, date: String): Result<List<TimeSlot>> {
+        return bookingApi.getAvailableSlots(stationId, date)
+    }
 }

@@ -374,41 +374,44 @@ class BookingFormActivity : AppCompatActivity() {
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                // Generate time slots (6 AM to 10 PM, 1-hour slots)
-                val timeSlots = mutableListOf<TimeSlot>()
-                for (hour in 6..22) {
-                    val timeString = String.format("%02d:00", hour)
-                    timeSlots.add(
-                        TimeSlot(
-                            time = timeString,
-                            hour = hour,
-                            available = true, // Default to available
-                            approvedBookings = 0,
-                            pendingBookings = 0,
-                            totalSlots = 4 // Default assumption
-                        )
-                    )
-                }
-                
-                // TODO: Replace with actual API call to get availability
-                // val availabilityResult = bookingRepository.getAvailableSlots(stationId, date)
-                // if (availabilityResult.isSuccess()) {
-                //     val availabilityData = availabilityResult.getDataOrNull()
-                //     // Process availability data and update timeSlots
-                // }
+                // Get real availability data from API
+                val availabilityResult = bookingRepository.getAvailableSlots(stationId, date)
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    availableTimeSlots = timeSlots
-                    timeSlotAdapter?.updateTimeSlots(availableTimeSlots)
-                    progressTimeSlots.visibility = View.GONE
-                    rvTimeSlots.visibility = View.VISIBLE
-                    updateDebugInfo()
+                    if (availabilityResult.isSuccess()) {
+                        val timeSlots = availabilityResult.getDataOrNull() ?: emptyList()
+                        availableTimeSlots = timeSlots
+                        timeSlotAdapter?.updateTimeSlots(timeSlots)
+                        progressTimeSlots.visibility = View.GONE
+                        rvTimeSlots.visibility = View.VISIBLE
+                        updateDebugInfo()
+                        
+                        android.util.Log.d("BookingForm", "Loaded ${timeSlots.size} time slots from API")
+                        Toasts.showInfo(this@BookingFormActivity, "Loaded ${timeSlots.size} time slots")
+                    } else {
+                        val error = availabilityResult.getErrorOrNull()
+                        android.util.Log.e("BookingForm", "Failed to load time slots: ${error?.message}")
+                        Toasts.showError(this@BookingFormActivity, "Failed to load time slots: ${error?.message}")
+                        
+                        // Fallback to empty list
+                        availableTimeSlots = emptyList()
+                        timeSlotAdapter?.updateTimeSlots(emptyList())
+                        progressTimeSlots.visibility = View.GONE
+                        rvTimeSlots.visibility = View.VISIBLE
+                        updateDebugInfo()
+                    }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("BookingForm", "Exception loading time slots", e)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     progressTimeSlots.visibility = View.GONE
                     rvTimeSlots.visibility = View.VISIBLE
                     Toasts.showError(this@BookingFormActivity, "Failed to load time slots: ${e.message}")
+                    
+                    // Fallback to empty list
+                    availableTimeSlots = emptyList()
+                    timeSlotAdapter?.updateTimeSlots(emptyList())
+                    updateDebugInfo()
                 }
             }
         }

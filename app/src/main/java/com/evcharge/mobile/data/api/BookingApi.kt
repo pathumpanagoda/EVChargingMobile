@@ -342,4 +342,48 @@ class BookingApi(private val apiClient: ApiClient) {
             null
         }
     }
+    
+    /**
+     * Get available time slots for a station on a specific date
+     */
+    suspend fun getAvailableSlots(stationId: String, date: String): Result<List<TimeSlot>> {
+        return try {
+            android.util.Log.d("BookingApi", "Getting available slots for station $stationId on date $date")
+            
+            val response = apiClient.get("/api/booking/availability/$stationId?date=$date")
+            
+            if (response.optBoolean("success", false)) {
+                val data = response.optJSONObject("data")
+                val timeSlots = mutableListOf<TimeSlot>()
+                
+                if (data != null) {
+                    val timeSlotsArray = data.optJSONArray("timeSlots")
+                    if (timeSlotsArray != null) {
+                        for (i in 0 until timeSlotsArray.length()) {
+                            val slotData = timeSlotsArray.getJSONObject(i)
+                            val timeSlot = TimeSlot(
+                                time = slotData.optString("time", ""),
+                                hour = slotData.optString("time", "").split(":")[0].toIntOrNull() ?: 0,
+                                available = slotData.optBoolean("available", false),
+                                approvedBookings = slotData.optInt("approvedBookings", 0),
+                                pendingBookings = slotData.optInt("pendingBookings", 0),
+                                totalSlots = slotData.optInt("totalSlots", 0)
+                            )
+                            timeSlots.add(timeSlot)
+                        }
+                    }
+                }
+                
+                android.util.Log.d("BookingApi", "Retrieved ${timeSlots.size} time slots")
+                Result.Success(timeSlots)
+            } else {
+                val message = response.optString("message", "Failed to get available slots")
+                android.util.Log.e("BookingApi", "API error: $message")
+                Result.Error(Exception(message))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BookingApi", "Exception getting available slots", e)
+            Result.Error(e)
+        }
+    }
 }
