@@ -14,7 +14,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            app:title="New Booking"
+            app:title="Create New Booking"
             app:titleTextColor="@color/white"
             app:navigationIcon="@drawable/ic_arrow_back" />
 
@@ -30,9 +30,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="16dp">
 
-        <!-- Station Selection -->
+        <!-- Main Booking Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -43,19 +43,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="24dp">
 
+                <!-- Station Selection -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/station"
-                    android:textAppearance="@style/TextAppearance.Title"
-                    android:layout_marginBottom="12dp" />
+                    android:text="Charging Station"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:layout_marginBottom="8dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/station"
+                    android:hint="Select a station"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     app:startIconDrawable="@drawable/ic_location_on"
                     app:endIconMode="dropdown_menu">
@@ -72,124 +73,125 @@
 
                 </com.google.android.material.textfield.TextInputLayout>
 
-            </LinearLayout>
+                <!-- Reservation Date -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Reservation Date"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
 
-        </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Select date"
+                    app:startIconDrawable="@drawable/ic_calendar_today">
 
-        <!-- Date and Time Selection -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            style="@style/CardStyle">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_reservation_date"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:minHeight="56dp"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:padding="12dp" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Time Slot Selection -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Time Slot (1 Hour)"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Time Slots Grid -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_time_slots"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="8dp"
+                    android:scrollbars="vertical" />
+
+                <!-- Loading indicator for time slots -->
+                <ProgressBar
+                    android:id="@+id/progress_time_slots"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone" />
+
+                <!-- Booking Rules -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Booking Rules:"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/date_time"
-                    android:textAppearance="@style/TextAppearance.Title"
-                    android:layout_marginBottom="12dp" />
+                    android:text="• Bookings must be made at least 12 hours in advance\n• Reservations can only be made up to 7 days in advance\n• Each booking is for 1 hour"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    android:textColor="@color/material_dynamic_neutral70"
+                    android:lineSpacingExtra="2dp" />
 
-                <!-- Start Date and Time -->
+                <!-- Debug Info (Development only) -->
                 <LinearLayout
+                    android:id="@+id/debug_info"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
+                    android:orientation="vertical"
+                    android:layout_marginTop="16dp"
+                    android:padding="8dp"
+                    android:background="@color/material_dynamic_neutral95"
+                    android:visibility="gone">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
-                        android:hint="@string/start_time"
-                        app:startIconDrawable="@drawable/ic_calendar_today">
+                        android:text="Debug"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                        android:textColor="@color/material_dynamic_neutral50" />
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_start_date"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
-                            android:inputType="none"
-                            android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tv_debug_selected_slot"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:hint="@string/start_time"
-                        app:startIconDrawable="@drawable/ic_access_time">
+                        android:text="Selected time slot: None"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="@color/material_dynamic_neutral50" />
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_start_time"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
-                            android:inputType="none"
-                            android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
-                <!-- End Date and Time -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tv_debug_available_slots"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
-                        android:hint="@string/end_time"
-                        app:startIconDrawable="@drawable/ic_calendar_today">
+                        android:text="Available slots: 0"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="@color/material_dynamic_neutral50" />
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_end_date"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
-                            android:inputType="none"
-                            android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tv_debug_station"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:hint="@string/time"
-                        app:startIconDrawable="@drawable/ic_access_time">
+                        android:text="Station: None"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="@color/material_dynamic_neutral50" />
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_end_time"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:minHeight="48dp"
-                            android:inputType="none"
-                            android:focusable="false"
-                            android:clickable="true"
-                            android:padding="12dp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
+                    <TextView
+                        android:id="@+id/tv_debug_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Date: None"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="@color/material_dynamic_neutral50" />
 
                 </LinearLayout>
 
@@ -197,14 +199,32 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Create Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_create"
-            style="@style/PrimaryButton"
+        <!-- Action Buttons -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginHorizontal="16dp"
-            android:text="@string/create_booking" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cancel"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Cancel" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_create"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Create Booking" />
+
+        </LinearLayout>
 
         <!-- Loading View -->
         <com.evcharge.mobile.ui.widgets.LoadingView

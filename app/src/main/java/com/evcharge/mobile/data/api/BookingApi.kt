@@ -15,14 +15,27 @@ class BookingApi(private val apiClient: ApiClient) {
     suspend fun createBooking(request: BookingCreateRequest): Result<Booking> {
         return try {
             // Convert Unix timestamp to ISO 8601 format for backend
+            // Use UTC timezone to match web app behavior (dayjs.utc())
             val startDateTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
                 .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
                 .format(java.util.Date(request.startTime))
             
+            val endDateTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
+                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                .format(java.util.Date(request.endTime))
+            
             val body = JSONObject().apply {
                 put("stationId", request.stationId)
                 put("reservationDateTime", startDateTime)
+                put("endDateTime", endDateTime)
             }
+            
+            // Debug logging
+            android.util.Log.d("BookingApi", "Creating booking with data:")
+            android.util.Log.d("BookingApi", "StationId: ${request.stationId}")
+            android.util.Log.d("BookingApi", "StartTime: $startDateTime")
+            android.util.Log.d("BookingApi", "EndTime: $endDateTime")
+            android.util.Log.d("BookingApi", "Request body: $body")
             
             val response = apiClient.post("/api/booking", body)
             

@@ -1,19 +1,20 @@
 package com.evcharge.mobile.ui.bookings
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.Toast
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.evcharge.mobile.BuildConfig
 import com.evcharge.mobile.R
 import com.evcharge.mobile.common.Datex
 import com.evcharge.mobile.common.Prefs
@@ -28,15 +29,17 @@ import com.evcharge.mobile.data.api.StationApi
 import com.evcharge.mobile.data.dto.Booking
 import com.evcharge.mobile.data.dto.BookingCreateRequest
 import com.evcharge.mobile.data.dto.Station
+import com.evcharge.mobile.data.dto.TimeSlot
 import com.evcharge.mobile.data.repo.BookingRepository
 import com.evcharge.mobile.data.repo.StationRepository
+import com.evcharge.mobile.ui.adapters.TimeSlotAdapter
 import com.evcharge.mobile.ui.widgets.LoadingView
 import com.google.android.material.button.MaterialButton
-import android.widget.Spinner
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.TimeZone
 
 /**
  * Booking form activity for creating new bookings
@@ -49,18 +52,27 @@ class BookingFormActivity : AppCompatActivity() {
     
     // UI Components
     private lateinit var etStation: AutoCompleteTextView
-    private lateinit var etStartDate: TextInputEditText
-    private lateinit var etStartTime: TextInputEditText
-    private lateinit var etEndDate: TextInputEditText
-    private lateinit var etEndTime: TextInputEditText
+    private lateinit var etReservationDate: TextInputEditText
+    private lateinit var rvTimeSlots: RecyclerView
+    private lateinit var progressTimeSlots: ProgressBar
     private lateinit var btnCreate: MaterialButton
+    private lateinit var btnCancel: MaterialButton
     private lateinit var loadingView: LoadingView
+    
+    // Debug components
+    private lateinit var debugInfo: View
+    private lateinit var tvDebugSelectedSlot: TextView
+    private lateinit var tvDebugAvailableSlots: TextView
+    private lateinit var tvDebugStation: TextView
+    private lateinit var tvDebugDate: TextView
     
     // Data
     private var stations: List<Station> = emptyList()
     private var selectedStationId: String = ""
-    private var startDateTime: Long = 0
-    private var endDateTime: Long = 0
+    private var selectedDate: String = ""
+    private var selectedTimeSlot: TimeSlot? = null
+    private var timeSlotAdapter: TimeSlotAdapter? = null
+    private var availableTimeSlots: List<TimeSlot> = emptyList()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,12 +101,24 @@ class BookingFormActivity : AppCompatActivity() {
             
             // Initialize UI components
             etStation = findViewById(R.id.et_station)
-            etStartDate = findViewById(R.id.et_start_date)
-            etStartTime = findViewById(R.id.et_start_time)
-            etEndDate = findViewById(R.id.et_end_date)
-            etEndTime = findViewById(R.id.et_end_time)
+            etReservationDate = findViewById(R.id.et_reservation_date)
+            rvTimeSlots = findViewById(R.id.rv_time_slots)
+            progressTimeSlots = findViewById(R.id.progress_time_slots)
             btnCreate = findViewById(R.id.btn_create)
+            btnCancel = findViewById(R.id.btn_cancel)
             loadingView = findViewById(R.id.loading_view)
+            
+            // Debug components
+            debugInfo = findViewById(R.id.debug_info)
+            tvDebugSelectedSlot = findViewById(R.id.tv_debug_selected_slot)
+            tvDebugAvailableSlots = findViewById(R.id.tv_debug_available_slots)
+            tvDebugStation = findViewById(R.id.tv_debug_station)
+            tvDebugDate = findViewById(R.id.tv_debug_date)
+            
+            // Show debug info in development builds
+            if (BuildConfig.DEBUG) {
+                debugInfo.visibility = View.VISIBLE
+            }
         } catch (e: Exception) {
             Toasts.showError(this, "Component initialization failed: ${e.message}")
             throw e
@@ -107,20 +131,21 @@ class BookingFormActivity : AppCompatActivity() {
             try {
                 setSupportActionBar(findViewById(R.id.toolbar))
                 supportActionBar?.setDisplayHomeAsUpEnabled(true)
-                supportActionBar?.title = "New Booking"
+                supportActionBar?.title = "Create New Booking"
             } catch (e: Exception) {
                 // Handle missing toolbar gracefully
                 Toasts.showWarning(this, "Toolbar setup skipped: ${e.message}")
             }
             
-            // Set default times (1 hour from now)
-            val calendar = Calendar.getInstance()
-            calendar.add(Calendar.HOUR, 1)
-            startDateTime = calendar.timeInMillis
-            calendar.add(Calendar.HOUR, 2)
-            endDateTime = calendar.timeInMillis
+            // Set up time slots RecyclerView
+            setupTimeSlotsRecyclerView()
             
-            updateDateTimeFields()
+            // Set default date to today
+            val calendar = Calendar.getInstance()
+            selectedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+            etReservationDate.setText(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(calendar.time))
+            
+            updateDebugInfo()
         } catch (e: Exception) {
             Toasts.showError(this, "UI setup failed: ${e.message}")
             throw e
@@ -129,42 +154,25 @@ class BookingFormActivity : AppCompatActivity() {
     
     private fun setupClickListeners() {
         try {
-            // Station selection is now handled in setupStationSpinner()
+            // Station selection is handled in setupStationSpinner()
             
-            // Date and time pickers
-            etStartDate.setOnClickListener { 
+            // Date picker
+            etReservationDate.setOnClickListener { 
                 try {
-                    showStartDatePicker()
+                    showDatePicker()
                 } catch (e: Exception) {
                     Toasts.showError(this, "Date picker failed: ${e.message}")
                 }
             }
-            etStartTime.setOnClickListener { 
-                try {
-                    showStartTimePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Time picker failed: ${e.message}")
-                }
-            }
-            etEndDate.setOnClickListener { 
-                try {
-                    showEndDatePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Date picker failed: ${e.message}")
-                }
-            }
-            etEndTime.setOnClickListener { 
-                try {
-                    showEndTimePicker()
-                } catch (e: Exception) {
-                    Toasts.showError(this, "Time picker failed: ${e.message}")
-                }
+            
+            // Cancel button
+            btnCancel.setOnClickListener {
+                finish()
             }
             
             // Create button
             btnCreate.setOnClickListener {
                 try {
-                    Toasts.showInfo(this, "Creating booking...")
                     createBooking()
                 } catch (e: Exception) {
                     Toasts.showError(this, "Create booking failed: ${e.message}")
@@ -250,6 +258,12 @@ class BookingFormActivity : AppCompatActivity() {
                     }
                     
                     Toasts.showInfo(this, "Selected: ${selectedStation.name} ($statusText)")
+                    
+                    // Load time slots for the selected station and date
+                    if (selectedDate.isNotEmpty()) {
+                        loadTimeSlots(selectedStationId, selectedDate)
+                    }
+                    updateDebugInfo()
                 }
             } catch (e: Exception) {
                 Toasts.showError(this, "Station selection failed: ${e.message}")
@@ -257,22 +271,75 @@ class BookingFormActivity : AppCompatActivity() {
         }
     }
     
-    private fun showStartDatePicker() {
+    private fun setupTimeSlotsRecyclerView() {
+        try {
+            // Set up grid layout manager (3 columns)
+            val layoutManager = GridLayoutManager(this, 3)
+            rvTimeSlots.layoutManager = layoutManager
+            
+            // Initialize adapter
+            timeSlotAdapter = TimeSlotAdapter(
+                timeSlots = availableTimeSlots,
+                onSlotSelected = { timeSlot ->
+                    selectedTimeSlot = timeSlot
+                    updateDebugInfo()
+                    Toasts.showInfo(this, "Selected time slot: ${timeSlot.time}")
+                }
+            )
+            rvTimeSlots.adapter = timeSlotAdapter
+        } catch (e: Exception) {
+            Toasts.showError(this, "Time slots setup failed: ${e.message}")
+        }
+    }
+    
+    private fun updateDebugInfo() {
+        try {
+            if (BuildConfig.DEBUG) {
+                tvDebugSelectedSlot.text = "Selected time slot: ${selectedTimeSlot?.time ?: "None"}"
+                tvDebugAvailableSlots.text = "Available slots: ${availableTimeSlots.size}"
+                tvDebugStation.text = "Station: ${selectedStationId.ifEmpty { "None" }}"
+                tvDebugDate.text = "Date: $selectedDate"
+                
+                // Additional debug info for date validation
+                if (selectedDate.isNotEmpty() && selectedTimeSlot != null) {
+                    try {
+                        val selectedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse("$selectedDate ${selectedTimeSlot!!.time}")
+                        if (selectedDateTime != null) {
+                            val now = System.currentTimeMillis()
+                            val twelveHoursFromNow = now + (12 * 60 * 60 * 1000)
+                            val isValid = selectedDateTime.time >= twelveHoursFromNow
+                            
+                            val debugDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(selectedDateTime)
+                            val debugNow = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(now))
+                            
+                            tvDebugDate.text = "Date: $selectedDate\nParsed: $debugDate\nNow: $debugNow\nValid: $isValid"
+                        }
+                    } catch (e: Exception) {
+                        tvDebugDate.text = "Date: $selectedDate\nParse Error: ${e.message}"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Debug info update failed, but don't crash the app
+        }
+    }
+    
+    private fun showDatePicker() {
         val calendar = Calendar.getInstance()
-        calendar.timeInMillis = startDateTime
         
         val datePickerDialog = DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
                 val newCalendar = Calendar.getInstance()
                 newCalendar.set(year, month, dayOfMonth)
-                newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
-                newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
-                startDateTime = newCalendar.timeInMillis
+                selectedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(newCalendar.time)
+                etReservationDate.setText(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(newCalendar.time))
                 
-                // Auto-set end time to 2 hours after start time
-                autoSetEndTime()
-                updateDateTimeFields()
+                // Load time slots for the selected date
+                if (selectedStationId.isNotEmpty()) {
+                    loadTimeSlots(selectedStationId, selectedDate)
+                }
+                updateDebugInfo()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -287,104 +354,60 @@ class BookingFormActivity : AppCompatActivity() {
         // Set minimum date to today
         datePickerDialog.datePicker.minDate = System.currentTimeMillis()
         
+        // For testing purposes, allow future dates (remove this in production)
+        if (BuildConfig.DEBUG) {
+            val futureDate = Calendar.getInstance()
+            futureDate.add(Calendar.YEAR, 1) // Allow dates up to 1 year in the future for testing
+            datePickerDialog.datePicker.maxDate = futureDate.timeInMillis
+        }
+        
         datePickerDialog.show()
     }
     
-    private fun showStartTimePicker() {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = startDateTime
+    private fun loadTimeSlots(stationId: String, date: String) {
+        progressTimeSlots.visibility = View.VISIBLE
+        rvTimeSlots.visibility = View.GONE
         
-        TimePickerDialog(
-            this,
-            { _, hourOfDay, minute ->
-                val newCalendar = Calendar.getInstance()
-                newCalendar.timeInMillis = startDateTime
-                newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                newCalendar.set(Calendar.MINUTE, minute)
-                startDateTime = newCalendar.timeInMillis
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                // Generate time slots (6 AM to 10 PM, 1-hour slots)
+                val timeSlots = mutableListOf<TimeSlot>()
+                for (hour in 6..22) {
+                    val timeString = String.format("%02d:00", hour)
+                    timeSlots.add(
+                        TimeSlot(
+                            time = timeString,
+                            hour = hour,
+                            available = true, // Default to available
+                            approvedBookings = 0,
+                            pendingBookings = 0,
+                            totalSlots = 4 // Default assumption
+                        )
+                    )
+                }
                 
-                // Auto-set end time to 2 hours after start time
-                autoSetEndTime()
-                updateDateTimeFields()
-            },
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            true
-        ).show()
-    }
-    
-    private fun showEndDatePicker() {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = endDateTime
-        
-        val datePickerDialog = DatePickerDialog(
-            this,
-            { _, year, month, dayOfMonth ->
-                val newCalendar = Calendar.getInstance()
-                newCalendar.set(year, month, dayOfMonth)
-                newCalendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY))
-                newCalendar.set(Calendar.MINUTE, calendar.get(Calendar.MINUTE))
-                endDateTime = newCalendar.timeInMillis
-                updateDateTimeFields()
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-        
-        // Set maximum date to 7 days from now
-        val maxDate = Calendar.getInstance()
-        maxDate.add(Calendar.DAY_OF_MONTH, 7)
-        datePickerDialog.datePicker.maxDate = maxDate.timeInMillis
-        
-        // Set minimum date to today
-        datePickerDialog.datePicker.minDate = System.currentTimeMillis()
-        
-        datePickerDialog.show()
-    }
-    
-    private fun showEndTimePicker() {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = endDateTime
-        
-        TimePickerDialog(
-            this,
-            { _, hourOfDay, minute ->
-                val newCalendar = Calendar.getInstance()
-                newCalendar.timeInMillis = endDateTime
-                newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                newCalendar.set(Calendar.MINUTE, minute)
-                endDateTime = newCalendar.timeInMillis
-                updateDateTimeFields()
-            },
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            true
-        ).show()
-    }
-    
-    private fun autoSetEndTime() {
-        // Set end time to 2 hours after start time
-        val endCalendar = Calendar.getInstance()
-        endCalendar.timeInMillis = startDateTime
-        endCalendar.add(Calendar.HOUR_OF_DAY, 2)
-        endDateTime = endCalendar.timeInMillis
-    }
-    
-    private fun updateDateTimeFields() {
-        val startCalendar = Calendar.getInstance()
-        startCalendar.timeInMillis = startDateTime
-        
-        val endCalendar = Calendar.getInstance()
-        endCalendar.timeInMillis = endDateTime
-        
-        val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        
-        etStartDate.setText(dateFormat.format(startCalendar.time))
-        etStartTime.setText(timeFormat.format(startCalendar.time))
-        etEndDate.setText(dateFormat.format(endCalendar.time))
-        etEndTime.setText(timeFormat.format(endCalendar.time))
+                // TODO: Replace with actual API call to get availability
+                // val availabilityResult = bookingRepository.getAvailableSlots(stationId, date)
+                // if (availabilityResult.isSuccess()) {
+                //     val availabilityData = availabilityResult.getDataOrNull()
+                //     // Process availability data and update timeSlots
+                // }
+                
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    availableTimeSlots = timeSlots
+                    timeSlotAdapter?.updateTimeSlots(availableTimeSlots)
+                    progressTimeSlots.visibility = View.GONE
+                    rvTimeSlots.visibility = View.VISIBLE
+                    updateDebugInfo()
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    progressTimeSlots.visibility = View.GONE
+                    rvTimeSlots.visibility = View.VISIBLE
+                    Toasts.showError(this@BookingFormActivity, "Failed to load time slots: ${e.message}")
+                }
+            }
+        }
     }
     
     private fun createBooking() {
@@ -394,133 +417,72 @@ class BookingFormActivity : AppCompatActivity() {
             return
         }
         
-        if (!Validators.isValidBookingDuration(startDateTime, endDateTime)) {
-            Toasts.showValidationError(this, Validators.getBookingDurationErrorMessage())
+        if (selectedDate.isEmpty()) {
+            Toasts.showValidationError(this, "Please select a reservation date")
             return
         }
         
-        if (!Validators.canCreateBooking(startDateTime)) {
-            Toasts.showValidationError(this, Validators.getBookingCreationErrorMessage())
+        if (selectedTimeSlot == null) {
+            Toasts.showValidationError(this, "Please select a time slot")
             return
         }
         
-        // Check slot availability before showing booking summary
-        checkSlotAvailability()
-    }
-    
-    private fun checkSlotAvailability() {
-        loadingView.show()
-        loadingView.setMessage("Checking slot availability...")
-        
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val result = bookingRepository.checkSlotAvailability(selectedStationId, startDateTime)
-                
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (result.isSuccess()) {
-                        val availabilityResponse = result.getDataOrNull()
-                        if (availabilityResponse != null) {
-                            if (availabilityResponse.isAvailable) {
-                                // Check if booking was already created during availability check
-                                if (availabilityResponse.booking != null) {
-                                    // Booking was created, navigate to booking detail
-                                    handleBookingCreated(availabilityResponse.booking)
-                                } else {
-                                    // Slots are available, show booking summary
-                                    showBookingSummary()
-                                }
-                            } else {
-                                // Slots are not available, show error message
-                                showSlotUnavailableDialog(availabilityResponse.message)
-                            }
-                        } else {
-                            Toasts.showError(this@BookingFormActivity, "Failed to check slot availability")
-                        }
-                    } else {
-                        val error = result.getErrorOrNull()
-                        Toasts.showError(this@BookingFormActivity, error?.message ?: "Failed to check slot availability")
-                    }
-                }
-            } catch (e: Exception) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toasts.showError(this@BookingFormActivity, "Failed to check slot availability: ${e.message}")
-                }
-            } finally {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadingView.hide()
-                }
-            }
-        }
-    }
-    
-    private fun showSlotUnavailableDialog(message: String) {
-        val selectedStation = stations.find { it.id == selectedStationId }
-        val stationName = selectedStation?.name ?: "Unknown Station"
-        
-        AlertDialog.Builder(this)
-            .setTitle("Slots Not Available")
-            .setMessage("$message\n\nStation: $stationName\nTime: ${Datex.formatToDisplay(startDateTime)}")
-            .setPositiveButton("OK") { _, _ ->
-                // User acknowledged, they can try a different time
-            }
-            .setNegativeButton("Try Different Time") { _, _ ->
-                // Clear the time selection so user can pick a different time
-                clearTimeSelection()
-            }
-            .show()
-    }
-    
-    private fun clearTimeSelection() {
-        // Reset to current time
-        val now = System.currentTimeMillis()
-        startDateTime = now
-        endDateTime = now + (2 * 60 * 60 * 1000) // 2 hours later
-        
-        updateDateTimeFields()
-    }
-    
-    private fun handleBookingCreated(booking: Booking) {
-        Toasts.showSuccess(this, "Booking created successfully")
-        
-        // Open booking detail
-        val intent = Intent(this, BookingDetailActivity::class.java)
-        intent.putExtra("booking_id", booking.id)
-        startActivity(intent)
-        finish()
-    }
-    
-    private fun showBookingSummary() {
-        val selectedStation = stations.find { it.id == selectedStationId }
-        val stationName = selectedStation?.name ?: "Unknown Station"
-        
-        val startTimeStr = Datex.formatToDisplay(startDateTime)
-        val endTimeStr = Datex.formatToDisplay(endDateTime)
-        val duration = (endDateTime - startDateTime) / (1000 * 60 * 60) // hours
-        
-        val message = """
-            Station: $stationName
-            Start: $startTimeStr
-            End: $endTimeStr
-            Duration: ${duration}h
+        // Validate booking rules
+        try {
+            // Parse the date and time, treating it as local time
+            val dateTimeString = "$selectedDate ${selectedTimeSlot!!.time}"
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            dateFormat.timeZone = TimeZone.getDefault() // Use local timezone
             
-            ${Validators.getBookingCreationErrorMessage()}
-        """.trimIndent()
-        
-        AlertDialog.Builder(this)
-            .setTitle("Booking Summary")
-            .setMessage(message)
-            .setPositiveButton("Create Booking") { _, _ ->
-                submitBooking()
+            val selectedDateTime = dateFormat.parse(dateTimeString)
+            if (selectedDateTime == null) {
+                Toasts.showValidationError(this, "Invalid date/time selection")
+                return
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            
+            val selectedTimeMillis = selectedDateTime.time
+            val now = System.currentTimeMillis()
+            val twelveHoursFromNow = now + (12 * 60 * 60 * 1000)
+            
+            // Debug logging
+            val debugDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(selectedDateTime)
+            val debugNow = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(now))
+            val debugTwelveHours = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(twelveHoursFromNow))
+            
+            if (BuildConfig.DEBUG) {
+                Toasts.showInfo(this, "Debug: Selected: $debugDate, Now: $debugNow, 12h from now: $debugTwelveHours")
+            }
+            
+            if (selectedTimeMillis < twelveHoursFromNow) {
+                val hoursDifference = (selectedTimeMillis - now) / (1000 * 60 * 60)
+                Toasts.showValidationError(this, "Bookings must be made at least 12 hours in advance. Selected time is only ${hoursDifference}h from now.")
+                return
+            }
+        } catch (e: Exception) {
+            Toasts.showValidationError(this, "Invalid date/time format: ${e.message}")
+            return
+        }
+        
+        // Create booking
+        submitBooking()
     }
+    
     
     private fun submitBooking() {
         loadingView.show()
         loadingView.setMessage("Creating booking...")
         
-        val request = BookingCreateRequest(selectedStationId, startDateTime, endDateTime)
+        // Create start and end times for 1-hour booking
+        // Parse the date and time as if they were in UTC (matching web app behavior)
+        val dateTimeString = "$selectedDate ${selectedTimeSlot!!.time}"
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        dateFormat.timeZone = TimeZone.getTimeZone("UTC") // Parse as UTC, not local time
+        
+        val selectedDateTime = dateFormat.parse(dateTimeString)
+        val startTime = selectedDateTime!!.time
+        val endTime = startTime + (60 * 60 * 1000) // 1 hour later
+        
+        val request = BookingCreateRequest(selectedStationId, startTime, endTime)
         
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
