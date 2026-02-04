@@ -80,23 +80,59 @@ class QrScanActivity : AppCompatActivity() {
     
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), Permissions.REQUEST_CAMERA_PERMISSION)
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
+                // Show rationale and request permission
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Camera Permission Required")
+                    .setMessage("Camera permission is needed to scan QR codes for booking completion.")
+                    .setPositiveButton("Grant Permission") { _, _ ->
+                        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), Permissions.REQUEST_CAMERA_PERMISSION)
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        Toasts.showError(this, "Camera permission is required to scan QR codes")
+                        finish()
+                    }
+                    .show()
+            } else {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), Permissions.REQUEST_CAMERA_PERMISSION)
+            }
         } else {
+            initializeCamera()
+        }
+    }
+    
+    private fun initializeCamera() {
+        try {
+            // Initialize the camera with proper error handling
+            barcodeView.initializeFromIntent(intent)
             startScanning()
+        } catch (e: Exception) {
+            Toasts.showError(this, "Camera initialization failed: ${e.message}")
+            finish()
         }
     }
     
     private fun startScanning() {
         if (!isScanning) {
-            isScanning = true
-            barcodeView.decodeContinuous(callback)
+            try {
+                isScanning = true
+                barcodeView.resume() // Resume the camera
+                barcodeView.decodeContinuous(callback)
+            } catch (e: Exception) {
+                Toasts.showError(this, "Failed to start camera: ${e.message}")
+                isScanning = false
+            }
         }
     }
     
     private fun stopScanning() {
         if (isScanning) {
-            isScanning = false
-            barcodeView.pause()
+            try {
+                isScanning = false
+                barcodeView.pause()
+            } catch (e: Exception) {
+                Toasts.showWarning(this, "Error stopping camera: ${e.message}")
+            }
         }
     }
     
@@ -181,7 +217,7 @@ class QrScanActivity : AppCompatActivity() {
         when (requestCode) {
             Permissions.REQUEST_CAMERA_PERMISSION -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    startScanning()
+                    initializeCamera()
                 } else {
                     Toasts.showError(this, "Camera permission is required to scan QR codes")
                     finish()
@@ -222,12 +258,23 @@ class QrScanActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            startScanning()
+            if (!isScanning) {
+                initializeCamera()
+            }
         }
     }
     
     override fun onPause() {
         super.onPause()
         stopScanning()
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            barcodeView.pause()
+        } catch (e: Exception) {
+            // Ignore errors during cleanup
+        }
     }
 }
